@@ -1,0 +1,8 @@
+# Created by .ignore support plugin (hsz.mobi)
+/gradlew
+/kafka-table-library.iml
+/gradlew.bat
+/.idea/
+/out/
+/gradle/
+/.gradle/
