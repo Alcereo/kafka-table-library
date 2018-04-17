@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutionException;
 @SpringBootApplication
 public class AdminController {
 
-    private static final String BROKERS = "broker:9092";
+    private static final String BROKERS = "192.170.0.3:9092";
 
     public static void main(String[] args) {
         SpringApplication.run(AdminController.class, args);

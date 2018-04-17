@@ -32,7 +32,7 @@ public class Application {
     private static final String TABLE_TOPIC = "longs-table";
 
 
-    private static final String BROKERS = "broker:9092";
+    private static final String BROKERS = "192.170.0.3:9092";
     public static final String TABLE_STORE = "tableStore";
 
 
@@ -75,8 +75,6 @@ public class Application {
 
     @Bean(destroyMethod = "close")
     public KafkaStreams kafkaStreams(AdminClient client) throws ExecutionException, InterruptedException, TimeoutException {
-
-//        createTopic(client, TABLE_OUT_TOPIC);
 
 //        ---
 
