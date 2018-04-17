@@ -1,14 +1,9 @@
 package com.github.alcereo.kafkatable.producer;
 
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.Materialized;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -30,10 +25,12 @@ import java.util.concurrent.TimeoutException;
 public class Application {
 
     private static final String TABLE_TOPIC = "longs-table";
+    public static final String TABLE_STORE = "tableStore";
 
+    public static final String EVENT_TOPIC = "event-avro-topic";
 
     private static final String BROKERS = "192.170.0.3:9092";
-    public static final String TABLE_STORE = "tableStore";
+    private static final String SCHEMA_REGISTRY_URL = "http://192.170.0.6:8081";
 
 
     public static void main(String[] args){
@@ -73,47 +70,47 @@ public class Application {
         return AdminClient.create(config);
     }
 
-    @Bean(destroyMethod = "close")
-    public KafkaStreams kafkaStreams(AdminClient client) throws ExecutionException, InterruptedException, TimeoutException {
-
-//        ---
-
-        Properties config = new Properties();
-
-        config.put(StreamsConfig.APPLICATION_ID_CONFIG, "ktable-kafka-stream");
-        config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
-
-        config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
-                Serdes.String().getClass().getName());
-        config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
-                Serdes.Long().getClass().getName());
-
-        config.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100L);
-
-//        ---------------
-
-        StreamsBuilder builder = new StreamsBuilder();
-
-        KTable<String, Long> longs_table = builder.table(TABLE_TOPIC, Materialized.as(TABLE_STORE));
-
-        KafkaStreams streams = new KafkaStreams(builder.build(), config);
-        streams.start();
-
-        return streams;
-
-    }
+//    @Bean(destroyMethod = "close")
+//    public KafkaStreams kafkaStreams(AdminClient client) throws ExecutionException, InterruptedException, TimeoutException {
+//
+////        ---
+//
+//        Properties config = new Properties();
+//
+//        config.put(StreamsConfig.APPLICATION_ID_CONFIG, "ktable-kafka-stream");
+//        config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
+//
+//        config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
+//                Serdes.String().getClass().getName());
+//        config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
+//                Serdes.Long().getClass().getName());
+//
+//        config.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100L);
+//
+////        ---------------
+//
+//        StreamsBuilder builder = new StreamsBuilder();
+//
+//        KTable<String, Long> longs_table = builder.table(TABLE_TOPIC, Materialized.as(TABLE_STORE));
+//
+//        KafkaStreams streams = new KafkaStreams(builder.build(), config);
+//        streams.start();
+//
+//        return streams;
+//
+//    }
 
     @Bean(destroyMethod = "close")
     public KafkaProducer kafkaProducer() {
 
         Properties producerConfig = new Properties();
         producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
+        producerConfig.put("schema.registry.url", SCHEMA_REGISTRY_URL);
         producerConfig.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.StringSerializer");
+                KafkaAvroSerializer.class.getName());
         producerConfig.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.LongSerializer");
+                KafkaAvroSerializer.class.getName());
 
         return new KafkaProducer<>(producerConfig);
-
     }
 }
