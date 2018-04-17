@@ -27,6 +27,7 @@ repositories {
 	mavenCentral()
     jcenter()
 	maven { url "https://repo.spring.io/milestone" }
+	maven { url "http://packages.confluent.io/maven/" }
 }
 
 
@@ -46,7 +47,13 @@ dependencies {
 	compile('org.apache.kafka:kafka-streams:1.0.0')
 	compile('org.apache.kafka:kafka-clients:1.0.0')
 
+//	AVRO ++
     compile('org.apache.avro:avro:1.8.2')
+	compile('io.confluent:kafka-avro-serializer:4.0.0'){
+		exclude module: 'slf4j-log4j12'
+		exclude module: 'log4j'
+	}
+//	AVRO --
 
 	compileOnly('org.projectlombok:lombok')
 	testCompile('org.springframework.boot:spring-boot-starter-test')
