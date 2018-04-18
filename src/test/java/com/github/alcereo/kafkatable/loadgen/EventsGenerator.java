@@ -1,22 +1,20 @@
 package com.github.alcereo.kafkatable.loadgen;
 
 
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import processing.DeviceEvent;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,13 +23,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 @EnableScheduling
 @SpringBootApplication
-public class LinesScheduler {
-
-
-
+public class EventsGenerator {
 
     public static void main(String[] args) {
-        SpringApplication.run(LinesScheduler.class, args);
+        SpringApplication.run(EventsGenerator.class, args);
     }
 
     @Bean
@@ -42,30 +37,22 @@ public class LinesScheduler {
     }
 
 
-    private List<String> lines = new ArrayList<>();
-
-    public LinesScheduler() {
-
-        lines.addAll(
-                Arrays.asList(
-                        "one",
-                        "second",
-                        "third",
-                        "another",
-                        "and-another"
-                )
-        );
+    public EventsGenerator() {
 
         ExecutorService exec = Executors.newCachedThreadPool();
 
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 5; i++) {
             exec.execute(() -> {
                 RestTemplate build = new RestTemplateBuilder()
                         .rootUri("http://localhost:8080/")
                         .build();
 
                 while (!Thread.currentThread().isInterrupted()) {
-                    RequestLine(build);
+
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+
+                    generateAndSendEvent(build, headers);
                 }
             });
         }
@@ -75,35 +62,35 @@ public class LinesScheduler {
     RestTemplate template;
 
 
-    @Bean
-    public Timer requestTimer(MeterRegistry registry){
-        return Timer
-                .builder("line.request.timer")
-                .register(registry);
-    }
-
-
-    @Bean
-    public Gauge requestSpeedCounter(MeterRegistry registry){
-        return Gauge.builder(requestSpeed, 0d, value -> value)
-                .register(registry);
-    }
-
-    @Autowired
-    Gauge requestSpeedCounter;
-
-    @Autowired
-    Timer requestTimer;
-
-    @Autowired
-    MeterRegistry registry;
+//    @Bean
+//    public Timer requestTimer(MeterRegistry registry){
+//        return Timer
+//                .builder("line.request.timer")
+//                .register(registry);
+//    }
+//
+//
+//    @Bean
+//    public Gauge requestSpeedCounter(MeterRegistry registry){
+//        return Gauge.builder(requestSpeed, 0d, value -> value)
+//                .register(registry);
+//    }
+//
+//    @Autowired
+//    Gauge requestSpeedCounter;
+//
+//    @Autowired
+//    Timer requestTimer;
+//
+//    @Autowired
+//    MeterRegistry registry;
 
     AtomicInteger count = new AtomicInteger();
 
     private String requestSpeed = "line.request.speed";
 
     @Scheduled(fixedRate=1000)
-    public void RequestLineSpeed(){
+    public void rateMetricConsole(){
         int andSet = count.getAndSet(0);
 
         System.out.println(andSet);
@@ -111,15 +98,23 @@ public class LinesScheduler {
 
     private Random random = new Random();
 
-    public void RequestLine(RestTemplate template){
+
+    public void generateAndSendEvent(RestTemplate template, HttpHeaders headers){
 
         count.getAndIncrement();
 
-        int randomIndex = Math.abs(random.nextInt() % lines.size());
+        DeviceEvent event = DeviceEvent.newBuilder()
+                .setDeviceId(String.valueOf(random.nextInt(10)))
+                .setComponentId(String.valueOf(random.nextInt(10)))
+                .setEventId(String.valueOf(random.nextInt(10)))
+                .setTimestamp(String.valueOf(System.currentTimeMillis()))
+                .build();
+
+        HttpEntity<String> entity = new HttpEntity<>(event.toString(), headers);
 
         template.postForEntity(
-                "http://localhost:8080/lines",
-                lines.get(randomIndex),
+                "http://localhost:8080/event",
+                entity,
                 String.class
         );
 
