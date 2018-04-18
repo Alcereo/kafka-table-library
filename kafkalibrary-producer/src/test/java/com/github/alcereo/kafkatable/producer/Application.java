@@ -27,7 +27,7 @@ public class Application {
     private static final String TABLE_TOPIC = "longs-table";
     public static final String TABLE_STORE = "tableStore";
 
-    public static final String EVENT_TOPIC = "event-avro-topic";
+    static final String EVENT_TOPIC = "event-avro-topic";
 
     private static final String BROKERS = "192.170.0.3:9092";
     private static final String SCHEMA_REGISTRY_URL = "http://192.170.0.6:8081";

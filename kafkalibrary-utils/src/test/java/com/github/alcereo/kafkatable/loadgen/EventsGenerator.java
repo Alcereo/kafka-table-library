@@ -61,30 +61,6 @@ public class EventsGenerator {
     @Autowired
     RestTemplate template;
 
-
-//    @Bean
-//    public Timer requestTimer(MeterRegistry registry){
-//        return Timer
-//                .builder("line.request.timer")
-//                .register(registry);
-//    }
-//
-//
-//    @Bean
-//    public Gauge requestSpeedCounter(MeterRegistry registry){
-//        return Gauge.builder(requestSpeed, 0d, value -> value)
-//                .register(registry);
-//    }
-//
-//    @Autowired
-//    Gauge requestSpeedCounter;
-//
-//    @Autowired
-//    Timer requestTimer;
-//
-//    @Autowired
-//    MeterRegistry registry;
-
     AtomicInteger count = new AtomicInteger();
 
     private String requestSpeed = "line.request.speed";

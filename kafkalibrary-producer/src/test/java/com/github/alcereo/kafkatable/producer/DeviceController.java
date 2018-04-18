@@ -22,11 +22,6 @@ public class DeviceController {
     @Autowired
     private KafkaProducer<String, GenericRecord> kafkaProducer;
 
-//    @Autowired
-//    private KafkaStreams kafkaStreams;
-
-//    private ExecutorService executor = Executors.newCachedThreadPool();
-
     @PostMapping
     private Mono<String> event(@RequestBody Mono<DeviceEvent> eventMono) throws ExecutionException, InterruptedException {
 
@@ -48,44 +43,5 @@ public class DeviceController {
                 }
         );
     }
-
-//    @DeleteMapping
-//    private void deleteLine(@RequestBody String line) throws ExecutionException, InterruptedException {
-//
-//        kafkaProducer.send(new ProducerRecord<>(
-//                "longs-table", line, null
-//        )).get();
-//
-//        executor.execute(() -> kafkaProducer.flush());
-//
-//    }
-
-//    @GetMapping
-//    private Mono<String> getTable(){
-//
-//        return Mono.fromCallable(() -> {
-//
-//            ReadOnlyKeyValueStore<String, Long> keyValueStore = kafkaStreams.store(Application.TABLE_STORE, QueryableStoreTypes.keyValueStore());
-//
-//            StringBuilder builder = new StringBuilder();
-//
-//            builder.append("=== Publisher store ===").append("\n");
-//
-//            builder.append("========== Lines =============").append("\n");
-//
-//            KeyValueIterator<String, Long> all = keyValueStore.all();
-//
-//            while (all.hasNext()){
-//                KeyValue<String, Long> next = all.next();
-//                builder.append("## ").append(next.key).append(" - ").append(next.value).append("\n");
-//            }
-//
-//            builder.append("=========== END ==============").append("\n");
-//
-//            return builder.toString();
-//
-//        });
-//
-//    }
 
 }
