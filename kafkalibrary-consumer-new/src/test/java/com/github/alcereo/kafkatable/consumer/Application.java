@@ -38,7 +38,7 @@ public class Application {
 
         Properties config = new Properties();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, "event-consumer-1");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "event-consumer-new-1");
         config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 
         config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100");

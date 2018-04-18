@@ -13,7 +13,7 @@
     	},
     	{
     		"name": "deviceId", 
-    		"type": "string"
+    		"type": "int"
     	},
     	{
     		"name": "componentId", 

@@ -10,7 +10,7 @@ import java.util.List;
 @Component
 public class EventInMemoryStore {
 
-    private BoundedDeq<DeviceEvent> events = new BoundedDeq<>(10);
+    private BoundedDeq<DeviceEvent> events = new BoundedDeq<>(20);
 
 
     public void addEvent(DeviceEvent event){

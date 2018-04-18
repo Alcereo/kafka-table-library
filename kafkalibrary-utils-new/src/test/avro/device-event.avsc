@@ -13,11 +13,16 @@
     	},
     	{
     		"name": "deviceId", 
-    		"type": "string"
+    		"type": "int"
     	},
     	{
     		"name": "componentId", 
     		"type": "string"
+    	},
+        {
+    		"name": "description",
+    		"type": "string",
+    		"default": "none"
     	}
     ]
 }

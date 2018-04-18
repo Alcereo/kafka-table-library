@@ -1,6 +1,5 @@
 package com.github.alcereo.kafkatable.producer;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +19,7 @@ import static com.github.alcereo.kafkatable.producer.Application.EVENT_TOPIC;
 public class DeviceController {
 
     @Autowired
-    private KafkaProducer<String, GenericRecord> kafkaProducer;
+    private KafkaProducer<Integer, DeviceEvent> kafkaProducer;
 
     @PostMapping
     private Mono<String> event(@RequestBody Mono<DeviceEvent> eventMono) throws ExecutionException, InterruptedException {

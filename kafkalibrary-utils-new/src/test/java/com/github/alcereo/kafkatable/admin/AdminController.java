@@ -1,4 +1,4 @@
-package kafkatable.admin;
+package com.github.alcereo.kafkatable.admin;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
