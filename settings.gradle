@@ -1,0 +1,4 @@
+include 'kafkalibrary-consumer'
+include 'kafkalibrary-producer'
+include 'kafkalibrary-utils'
+include 'kafkalibrary-common'

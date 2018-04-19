@@ -5,8 +5,6 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.producer.Partitioner;
-import org.apache.kafka.common.Cluster;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,32 +31,6 @@ public class Application implements CommandLineRunner {
     public static void main(String[] args){
         SpringApplication.run(Application.class, args);
     }
-
-
-    public static class IntegerKeyDivideDevicePartitioner implements Partitioner {
-
-        private int numParts;
-
-        @Override
-        public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
-            if (key instanceof Integer){
-                return ((Integer) key)%numParts;
-            }else
-                return 0;
-        }
-
-        @Override
-        public void close() {
-        }
-
-        @Override
-        public void configure(Map<String, ?> configs) {
-            numParts = Objects.requireNonNull(
-                    (Integer) configs.get(PARTITIONER_NUMPARTS_PROPERTY_NAME)
-            );
-        }
-    }
-
 
     @Override
     public void run(String... args) throws ExecutionException, InterruptedException {
