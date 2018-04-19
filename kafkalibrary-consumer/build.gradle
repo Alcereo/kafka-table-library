@@ -53,6 +53,10 @@ dependencies {
 		exclude module: 'slf4j-log4j12'
 		exclude module: 'log4j'
 	}
+	compile('io.confluent:kafka-streams-avro-serde:4.0.0'){
+		exclude module: 'slf4j-log4j12'
+		exclude module: 'log4j'
+	}
 //	AVRO --
 
 	compileOnly('org.projectlombok:lombok')
