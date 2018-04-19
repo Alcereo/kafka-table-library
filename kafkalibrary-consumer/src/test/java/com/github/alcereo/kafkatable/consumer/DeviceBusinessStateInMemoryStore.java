@@ -14,21 +14,19 @@ public class DeviceBusinessStateInMemoryStore {
 
 
     public void upsert(Integer deviceId, DeviceBusinessStatus status){
-        statuses.put(
-                deviceId,
-                StatusRecord.builder()
-                        .internalChange(true)
-                        .status(status)
-                        .build()
-        );
+        upsert(deviceId, status, true);
     }
 
     public void externalUpsert(Integer deviceId, DeviceBusinessStatus status){
+        upsert(deviceId, status, false);
+    }
+
+    private synchronized void upsert(Integer deviceId, DeviceBusinessStatus status, boolean internal){
         statuses.put(
                 deviceId,
                 StatusRecord.builder()
-                        .internalChange(false)
                         .status(status)
+                        .internalChange(internal)
                         .build()
         );
     }

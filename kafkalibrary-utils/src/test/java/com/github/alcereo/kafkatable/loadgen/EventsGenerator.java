@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @SpringBootApplication
 public class EventsGenerator {
 
-    private final int NUM_TREADS = 10;
+    private final int NUM_TREADS = 20;
 
 
     public static void main(String[] args) {

@@ -13,7 +13,7 @@ public class EventInMemoryStore {
     private BoundedDeq<DeviceEvent> events = new BoundedDeq<>(20);
 
 
-    public void addEvent(DeviceEvent event){
+    public synchronized void addEvent(DeviceEvent event){
         events.addFirst(event);
     }
 
