@@ -1,9 +1,16 @@
 package com.github.alcereo.kafkatable.producer;
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import org.apache.kafka.clients.admin.*;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Partitioner;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.Cluster;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -11,23 +18,21 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.reactive.config.EnableWebFlux;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
 
 @SpringBootApplication
 @EnableScheduling
 @EnableWebFlux
-public class Application {
+@Slf4j
+public class Application implements CommandLineRunner {
 
     static final String EVENT_TOPIC = "event-topic";
+    static final Integer NUM_PARTS = 20;
+    static final String PARTITIONER_NUMPARTS_PROPERTY_NAME = "device.partitioner.numparts";
 
     private static final String BROKERS = "192.170.0.3:9092";
     private static final String SCHEMA_REGISTRY_URL = "http://192.170.0.6:8081";
+
 
 
     public static void main(String[] args){
@@ -35,36 +40,6 @@ public class Application {
                 .web(WebApplicationType.REACTIVE)
                 .sources(Application.class)
                 .run(args);
-    }
-
-    public static void createTopic(AdminClient admin, String topicName) throws ExecutionException, InterruptedException, TimeoutException {
-
-        ListTopicsResult listTopicsResult = admin.listTopics();
-
-        if (!listTopicsResult.names().get().contains(topicName)) {
-
-            Map<String, String> configs = new HashMap<>();
-            int partitions = 1;
-            short replication = 1;
-
-            CreateTopicsResult topics = admin.createTopics(
-                    Collections.singletonList(
-                            new NewTopic(topicName, partitions, replication)
-                                    .configs(configs)
-                    )
-            );
-
-            topics.all().get(10, TimeUnit.SECONDS);
-
-        }
-    }
-
-    @Bean(destroyMethod = "close")
-    public AdminClient adminClient(){
-        Properties config = new Properties();
-        config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
-
-        return AdminClient.create(config);
     }
 
 //    @Bean(destroyMethod = "close")
@@ -102,6 +77,9 @@ public class Application {
 
         Properties producerConfig = new Properties();
         producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
+        producerConfig.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, DeviceEventsPartitioner.class.getName());
+        producerConfig.put(PARTITIONER_NUMPARTS_PROPERTY_NAME, NUM_PARTS);
+
         producerConfig.put("schema.registry.url", SCHEMA_REGISTRY_URL);
         producerConfig.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                 KafkaAvroSerializer.class.getName());
@@ -109,5 +87,59 @@ public class Application {
                 KafkaAvroSerializer.class.getName());
 
         return new KafkaProducer<>(producerConfig);
+    }
+
+    public static class DeviceEventsPartitioner implements Partitioner{
+
+        private int numParts;
+
+        @Override
+        public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
+            if (key instanceof Integer){
+                return ((Integer) key)%numParts;
+            }else
+                return 0;
+        }
+
+        @Override
+        public void close() {
+        }
+
+        @Override
+        public void configure(Map<String, ?> configs) {
+            numParts = Objects.requireNonNull(
+                    (Integer) configs.get(PARTITIONER_NUMPARTS_PROPERTY_NAME)
+            );
+        }
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        log.info("Intent to create topic: " + EVENT_TOPIC);
+
+        Properties config = new Properties();
+        config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
+
+        try(AdminClient adminClient = AdminClient.create(config)) {
+
+            Set<String> strings = adminClient.listTopics().names().get();
+
+            if (!strings.contains(EVENT_TOPIC)) {
+
+//        EVENT_TOPIC ++
+                NewTopic topic = new NewTopic(EVENT_TOPIC, NUM_PARTS, (short) 1);
+                Map<String, String> properties = new HashMap<>();
+
+                topic.configs(properties);
+
+//        EVENT_TOPIC --
+
+                CreateTopicsResult result = adminClient.createTopics(
+                        Collections.singletonList(topic)
+                );
+
+                result.all().get();
+            }
+        }
     }
 }

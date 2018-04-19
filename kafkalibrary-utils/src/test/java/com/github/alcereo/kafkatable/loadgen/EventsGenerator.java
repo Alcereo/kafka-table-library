@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @SpringBootApplication
 public class EventsGenerator {
 
-    private final int NUM_TREADS = 5;
+    private final int NUM_TREADS = 10;
 
 
     public static void main(String[] args) {
@@ -102,7 +102,7 @@ public class EventsGenerator {
         count.getAndIncrement();
 
         DeviceEvent event = DeviceEvent.newBuilder()
-                .setDeviceId(random.nextInt(20))
+                .setDeviceId(random.nextInt(35))
                 .setComponentId(String.valueOf(random.nextInt(3)))
                 .setEventId(String.valueOf(random.nextInt(3)))
                 .setTimestamp(String.valueOf(System.currentTimeMillis()))
@@ -117,7 +117,7 @@ public class EventsGenerator {
         );
 
         try {
-            Thread.sleep(1000+random.nextInt(1000));
+            Thread.sleep(10+random.nextInt(100));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

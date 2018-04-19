@@ -22,7 +22,7 @@ public class EventController {
 
         builder.append("=== Consumer store ===").append("\n");
 
-        builder.append("========== Events =============").append("\n");
+        builder.append("========== Last 20 received events =============").append("\n");
 
         List<DeviceEvent> all = store.getAll();
 

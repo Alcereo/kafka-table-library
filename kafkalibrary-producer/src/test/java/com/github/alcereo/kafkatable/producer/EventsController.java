@@ -16,13 +16,13 @@ import static com.github.alcereo.kafkatable.producer.Application.EVENT_TOPIC;
 
 @RestController
 @RequestMapping("event")
-public class DeviceController {
+public class EventsController {
 
     @Autowired
     private KafkaProducer<Integer, DeviceEvent> kafkaProducer;
 
     @PostMapping
-    private Mono<String> event(@RequestBody Mono<DeviceEvent> eventMono) throws ExecutionException, InterruptedException {
+    private Mono<String> event(@RequestBody Mono<DeviceEvent> eventMono) {
 
         return eventMono.map(
                 event -> {

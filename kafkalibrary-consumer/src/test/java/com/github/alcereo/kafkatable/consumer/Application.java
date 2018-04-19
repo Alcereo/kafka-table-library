@@ -8,20 +8,23 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Partitioner;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.TopicPartition;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import processing.DeviceBusinessStatus;
 import processing.DeviceEvent;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 @SpringBootApplication
@@ -29,8 +32,9 @@ import java.util.concurrent.ExecutionException;
 @Slf4j
 public class Application implements CommandLineRunner {
 
-    static final String DEVICE_BUSINESS_STATUS = "device-business-status-table";
-//    public static final String TABLE_STORE = "tableStore";
+    static final String DEVICE_BUSINESS_STATUS_TABLE = "device-business-status-table";
+    static final Integer NUM_PARTS = 20;
+    static final String PARTITIONER_NUMPARTS_PROPERTY_NAME = "device.partitioner.numparts";
 
     static final String EVENT_TOPIC = "event-topic";
 
@@ -38,13 +42,15 @@ public class Application implements CommandLineRunner {
     private static final String BROKERS = "192.170.0.3:9092";
     private static final String SCHEMA_REGISTRY_URL = "http://192.170.0.6:8081";
 
+    @Value("${device-state-consumer-group}")
+    private String deviceStateConsumerGroup;
 
     public static void main(String[] args){
         SpringApplication.run(Application.class, args);
     }
 
     @Bean(destroyMethod = "close")
-    public KafkaConsumer<String, DeviceEvent> kafkaConsumer(){
+    public KafkaConsumer<Integer, DeviceEvent> eventsConsumer(){
 
         Properties config = new Properties();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
@@ -62,9 +68,48 @@ public class Application implements CommandLineRunner {
         config.put("specific.avro.reader", "true");
 
 
-        KafkaConsumer<String, DeviceEvent> consumer = new KafkaConsumer<>(config);
+        KafkaConsumer<Integer, DeviceEvent> consumer = new KafkaConsumer<>(config);
 
         consumer.subscribe(Collections.singletonList(EVENT_TOPIC));
+
+        return consumer;
+    }
+
+    @Bean(destroyMethod = "close")
+    public KafkaConsumer<Integer, DeviceBusinessStatus> deviceStateConsumer(){
+
+        Properties config = new Properties();
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, deviceStateConsumerGroup);
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+
+        config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100");
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                KafkaAvroDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                KafkaAvroDeserializer.class.getName());
+        config.put("schema.registry.url", SCHEMA_REGISTRY_URL);
+        config.put("specific.avro.reader", "true");
+
+
+        KafkaConsumer<Integer, DeviceBusinessStatus> consumer = new KafkaConsumer<>(config);
+
+        consumer.subscribe(
+                Collections.singletonList(DEVICE_BUSINESS_STATUS_TABLE),
+                new ConsumerRebalanceListener() {
+                    @Override
+                    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                        log.warn("REBALANSING REVOKED!");
+                    }
+
+                    @Override
+                    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                        consumer.seekToBeginning(partitions);
+                    }
+                }
+        );
 
         return consumer;
     }
@@ -74,6 +119,11 @@ public class Application implements CommandLineRunner {
 
         Properties producerConfig = new Properties();
         producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
+        producerConfig.put(ProducerConfig.PARTITIONER_CLASS_CONFIG,
+                IntegerKeyDivideDevicePartitioner.class.getName()
+        );
+        producerConfig.put(PARTITIONER_NUMPARTS_PROPERTY_NAME, NUM_PARTS);
+
         producerConfig.put("schema.registry.url", SCHEMA_REGISTRY_URL);
         producerConfig.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                 KafkaAvroSerializer.class.getName());
@@ -83,33 +133,64 @@ public class Application implements CommandLineRunner {
         return new KafkaProducer<>(producerConfig);
     }
 
+
+    public static class IntegerKeyDivideDevicePartitioner implements Partitioner {
+
+        private int numParts;
+
+        @Override
+        public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
+            if (key instanceof Integer){
+                return ((Integer) key)%numParts;
+            }else
+                return 0;
+        }
+
+        @Override
+        public void close() {
+        }
+
+        @Override
+        public void configure(Map<String, ?> configs) {
+            numParts = Objects.requireNonNull(
+                    (Integer) configs.get(PARTITIONER_NUMPARTS_PROPERTY_NAME)
+            );
+        }
+    }
+
+
     @Override
     public void run(String... args) throws ExecutionException, InterruptedException {
 
-        log.info("Intent to create topic: "+DEVICE_BUSINESS_STATUS);
+        log.info("Intent to create topic: "+DEVICE_BUSINESS_STATUS_TABLE);
 
         Properties config = new Properties();
         config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
 
         try(AdminClient adminClient = AdminClient.create(config)) {
 
-//        BUSINESS_STATUS_TOPIC ++
-            NewTopic businessStatusTopic = new NewTopic(DEVICE_BUSINESS_STATUS, 3, (short) 1);
-            Map<String, String> properties = new HashMap<>();
-            properties.put("cleanup.policy", "compact");
-            properties.put("delete.retention.ms", "10000");
-            properties.put("segment.ms", "10000");
-            properties.put("min.cleanable.dirty.ratio", "0.01");
+            Set<String> strings = adminClient.listTopics().names().get();
 
-            businessStatusTopic.configs(properties);
+            if (!strings.contains(DEVICE_BUSINESS_STATUS_TABLE)) {
+
+//        BUSINESS_STATUS_TOPIC ++
+                NewTopic businessStatusTopic = new NewTopic(DEVICE_BUSINESS_STATUS_TABLE, NUM_PARTS, (short) 1);
+                Map<String, String> properties = new HashMap<>();
+                properties.put("cleanup.policy", "compact");
+                properties.put("delete.retention.ms", "20000");
+                properties.put("segment.ms", "20000");
+                properties.put("min.cleanable.dirty.ratio", "0.01");
+
+                businessStatusTopic.configs(properties);
 
 //        BUSINESS_STATUS_TOPIC --
 
-            CreateTopicsResult result = adminClient.createTopics(
-                    Collections.singletonList(businessStatusTopic)
-            );
+                CreateTopicsResult result = adminClient.createTopics(
+                        Collections.singletonList(businessStatusTopic)
+                );
 
-            result.all().get();
+                result.all().get();
+            }
         }
 
     }
