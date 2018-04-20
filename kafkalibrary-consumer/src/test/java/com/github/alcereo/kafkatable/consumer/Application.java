@@ -20,7 +20,6 @@ public class Application implements CommandLineRunner {
 
     static final String DEVICE_BUSINESS_STATUS_TABLE = "device-business-status-table";
     static final Integer NUM_PARTS = 20;
-    static final String PARTITIONER_NUMPARTS_PROPERTY_NAME = "device.partitioner.numparts";
 
     static final String EVENT_TOPIC = "event-topic";
 

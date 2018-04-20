@@ -1,4 +1,6 @@
 include 'kafkalibrary-consumer'
 include 'kafkalibrary-producer'
 include 'kafkalibrary-utils'
-include 'kafkalibrary-common'
+include 'kafka-library-sample-client'
+
+include 'kafka-tool'
