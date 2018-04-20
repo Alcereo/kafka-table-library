@@ -26,6 +26,10 @@ public class KafkaTool {
         return new KafkaProducerWrapper.Builder<>(brokers, schemaRegistryUrl);
     }
 
+    public <K,V> KafkaTopicWrapper.Builder<K,V> topicBuilder(){
+        return new KafkaTopicWrapper.Builder<>();
+    }
+
     public <K,V> KafkaConsumerWrapper.Builder<K,V> consumerWrapperBuilder(){
         return new KafkaConsumerWrapper.Builder<>(brokers, schemaRegistryUrl);
     }

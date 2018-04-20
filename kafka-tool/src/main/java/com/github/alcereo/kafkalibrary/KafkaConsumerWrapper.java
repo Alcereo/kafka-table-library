@@ -125,6 +125,23 @@ public class KafkaConsumerWrapper<K,V> implements AutoCloseable{
             return this;
         }
 
+        @SuppressWarnings("unchecked")
+        public <PK,PV> Builder<PK,PV> topic(KafkaTopicWrapper<PK,PV> topic){
+
+            Builder<PK,PV> result = keyValueClass(topic.getKeyClass(), topic.getValueClass())
+                    .topic(topic.getName());
+
+            if (topic.isEnableAvroSerDe()){
+                result.enableAvroSerDe();
+            }
+
+            if (topic.isTableSubscription()){
+                result.enableTableSubscription();
+            }
+
+            return result;
+        }
+
         public KafkaConsumerWrapper<K,V> build(){
 
             Objects.requireNonNull(topic,"Required set property: topic");
