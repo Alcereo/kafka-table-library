@@ -64,6 +64,10 @@ public class KafkaProducerWrapper<K,V>{
     }
 
 
+    public void close(){
+        producer.close();
+    }
+
     public static class Header implements org.apache.kafka.common.header.Header{
 
         private String key;

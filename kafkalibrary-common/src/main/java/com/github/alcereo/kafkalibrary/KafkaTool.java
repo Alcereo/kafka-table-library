@@ -30,4 +30,7 @@ public class KafkaTool {
         return new KafkaConsumerWrapper.Builder<>(brokers, schemaRegistryUrl);
     }
 
+    public <K, V> KafkaConsumerLoop.Builder<K, V> consumerLoopBuilder(@NonNull KafkaConsumerWrapper.Builder<K,V> consumerBuilder) {
+        return new KafkaConsumerLoop.Builder<>(consumerBuilder);
+    }
 }

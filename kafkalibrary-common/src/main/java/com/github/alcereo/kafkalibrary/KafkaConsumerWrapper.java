@@ -1,16 +1,21 @@
 package com.github.alcereo.kafkalibrary;
 
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import lombok.Getter;
 import lombok.NonNull;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Properties;
 
-public class KafkaConsumerWrapper<K,V> {
+public class KafkaConsumerWrapper<K,V> implements AutoCloseable{
 
     private KafkaConsumer<K,V> consumer;
     private String topic;
@@ -44,7 +49,7 @@ public class KafkaConsumerWrapper<K,V> {
         consumer.subscribe(Collections.singletonList(topic));
     }
 
-    public ConsumerRecords<K, V> pollWithoutCommit(long timeout) {
+    public ConsumerRecords<K, V> pollBlockedWithoutCommit(long timeout) throws WakeupException {
         return consumer.poll(timeout);
     }
 
@@ -56,6 +61,10 @@ public class KafkaConsumerWrapper<K,V> {
         consumer.close();
     }
 
+    public void wakeup(){
+        consumer.wakeup();
+    }
+
 
     public static class Builder<K,V>{
 
@@ -64,6 +73,7 @@ public class KafkaConsumerWrapper<K,V> {
         private Properties config = new Properties();
         private String topic;
 
+        @Getter
         private String consumerGroup;
         private Subscriber subscriber = new DefaultSubscriber();
 
