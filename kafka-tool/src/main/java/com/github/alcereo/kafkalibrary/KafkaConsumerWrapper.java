@@ -4,14 +4,10 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import lombok.Getter;
 import lombok.NonNull;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -27,26 +23,6 @@ public class KafkaConsumerWrapper<K,V> implements AutoCloseable{
 
     public KafkaConsumer<K, V> getConsumer() {
         return consumer;
-    }
-
-    public void subscribeAsATable(@NonNull String topic){
-        consumer.subscribe(
-                Collections.singletonList(topic),
-                new ConsumerRebalanceListener() {
-                    @Override
-                    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                    }
-
-                    @Override
-                    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                        consumer.seekToBeginning(partitions);
-                    }
-                }
-        );
-    }
-
-    public void subscribe(@NonNull String topic){
-        consumer.subscribe(Collections.singletonList(topic));
     }
 
     public ConsumerRecords<K, V> pollBlockedWithoutCommit(long timeout) throws WakeupException {

@@ -1,4 +1,4 @@
-package com.github.alcereo.kafkatool;
+package com.github.alcereo.kafkalibrary;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -7,10 +7,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class Application {
 
     static final String DEVICE_BUSINESS_STATUS_TABLE = "device-business-status-table";
-    static final Integer NUM_PARTS = 20;
-    static final String PARTITIONER_NUMPARTS_PROPERTY_NAME = "device.partitioner.numparts";
-
-    static final String EVENT_TOPIC = "event-topic";
 
     static final String BROKERS = "192.170.0.3:9092";
     static final String SCHEMA_REGISTRY_URL = "http://192.170.0.6:8081";

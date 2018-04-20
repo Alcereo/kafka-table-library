@@ -1,4 +1,4 @@
-package com.github.alcereo.kafkatool;
+package com.github.alcereo.kafkalibrary;
 
 import org.springframework.stereotype.Component;
 import processing.DeviceBusinessStatus;
@@ -6,10 +6,9 @@ import processing.DeviceBusinessStatus;
 import java.util.HashMap;
 
 @Component
-public class DeviceBusinessStateInMemoryStore {
+public class DeviceBusinessStateInMemoryStore implements KTStorage<Integer,DeviceBusinessStatus> {
 
     private HashMap<Integer, DeviceBusinessStatus> statuses = new HashMap<>();
-
 
     public synchronized void upsert(Integer deviceId, DeviceBusinessStatus status){
         statuses.put(deviceId, status);

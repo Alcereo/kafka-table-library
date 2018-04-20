@@ -1,4 +1,4 @@
-package com.github.alcereo.kafkatool;
+package com.github.alcereo.kafkalibrary;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;

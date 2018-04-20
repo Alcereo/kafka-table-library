@@ -1,14 +1,10 @@
-package com.github.alcereo.kafkatool;
+package com.github.alcereo.kafkalibrary;
 
-import com.github.alcereo.kafkalibrary.KafkaConsumerLoop;
-import com.github.alcereo.kafkalibrary.KafkaConsumerWrapper;
-import com.github.alcereo.kafkalibrary.KafkaTool;
-import com.github.alcereo.kafkalibrary.KafkaTopicWrapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import processing.DeviceBusinessStatus;
 
-import static com.github.alcereo.kafkatool.Application.*;
+import static com.github.alcereo.kafkalibrary.Application.*;
 
 @Configuration
 public class KafkaConfig {
@@ -45,9 +41,8 @@ public class KafkaConfig {
 
         KafkaConsumerLoop<Integer, DeviceBusinessStatus> consumerLoop = kafkaTool.consumerLoopBuilder(consumerBuilder)
                 .threadsNumber(5)
-                .recordFunctionHandling(record ->
-                        store.upsert(record.key(), record.value())
-                ).build();
+                .connectStorage(store)
+                .build();
 
         consumerLoop.start();
 

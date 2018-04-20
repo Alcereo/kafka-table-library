@@ -11,6 +11,7 @@ import org.apache.kafka.common.errors.WakeupException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -22,8 +23,9 @@ public class KafkaConsumerLoop<K,V> {
 
     private ExecutorService threadPool;
     private KafkaConsumerWrapper.Builder<K, V> consumerBuilder;
-    private RecordHandlingFunction<K, V> function;
     private List<KafkaConsumerWrapper<K, V>> consumers = new ArrayList<>();
+
+    private RecordHandlingFunction<K, V> function;
 
     private volatile boolean active = true;
 
@@ -47,6 +49,41 @@ public class KafkaConsumerLoop<K,V> {
         }
     }
 
+    private synchronized void appendConsumer(KafkaConsumerWrapper<K, V> consumerWrapper){
+        consumers.add(consumerWrapper);
+    }
+
+    private void run() {
+
+        try (KafkaConsumerWrapper<K, V> consumerWrapper = consumerBuilder.build()) {
+
+            appendConsumer(consumerWrapper);
+
+            while (!Thread.currentThread().isInterrupted() && active) {
+
+                try {
+                    ConsumerRecords<K, V> consumerRecords = consumerWrapper.pollBlockedWithoutCommit(300);
+
+//                Придется обрабатывать по порядку. Нам важна гарантия последовательности.
+                    for (ConsumerRecord<K, V> consumerRecord : consumerRecords) {
+                        function.handleRecord(consumerRecord);
+                    }
+
+                    consumerWrapper.commitSync();
+                } catch (WakeupException e) {
+                    log.debug("Wakeup consumer in group: " + consumerBuilder.getConsumerGroup());
+
+                } catch (Exception e) {
+                    log.error("Exception when handle records.", e);
+                }
+            }
+
+        }catch (Exception e){
+            log.error("Error when build consumer.", e);
+        }
+    }
+
+
     public void close() throws InterruptedException {
         log.debug("Shutdown consumer loop thread pool");
 
@@ -63,40 +100,6 @@ public class KafkaConsumerLoop<K,V> {
 
     private void gotToInactive() {
         active = false;
-    }
-
-    private synchronized void appendConsumer(KafkaConsumerWrapper<K, V> consumerWrapper){
-        consumers.add(consumerWrapper);
-    }
-
-    private void run() {
-
-        try(KafkaConsumerWrapper<K, V> consumerWrapper = consumerBuilder.build()) {
-
-            appendConsumer(consumerWrapper);
-
-            while (!Thread.currentThread().isInterrupted() && active) {
-
-                try {
-                    ConsumerRecords<K, V> consumerRecords = consumerWrapper.pollBlockedWithoutCommit(300);
-
-//                Придется обрабатывать по порядку. Нам важна гарантия последовательности.
-                    for (ConsumerRecord<K, V> consumerRecord : consumerRecords) {
-                        function.handleRecord(consumerRecord);
-                    }
-
-                    consumerWrapper.commitSync();
-                } catch (WakeupException e){
-                    log.debug("Wakeup consumer in group: " + consumerBuilder.getConsumerGroup());
-
-                } catch (Exception e) {
-                    log.error("Exception when handle records.", e);
-                }
-            }
-
-        }catch (Exception e){
-            log.error("Error when build consumer.", e);
-        }
     }
 
     public static class Builder<K,V>{
@@ -125,10 +128,22 @@ public class KafkaConsumerLoop<K,V> {
             return this;
         }
 
-        public KafkaConsumerLoop<K,V> build(){
+        public Builder<K,V> connectStorage(KTStorage<K,V> storage){
+            if (function == null)
+                function = record -> storage.upsert(record.key(), record.value());
+            else
+                function = function.andThen(record -> storage.upsert(record.key(), record.value()));
 
-            if (poolName.isEmpty()){
-                poolName = "kafka-consumer-loop-%d | "+consumerBuilder.getConsumerGroup();
+            return this;
+        }
+
+        public KafkaConsumerLoop<K, V> build() {
+
+            Objects.requireNonNull(consumerBuilder, "Required property: 'consumerBuilder'");
+            Objects.requireNonNull(function, "Required property: 'function'");
+
+            if (poolName.isEmpty()) {
+                poolName = "kafka-consumer-loop-%d | " + consumerBuilder.getConsumerGroup();
             }
 
             ExecutorService executorService = Executors.newFixedThreadPool(
@@ -152,6 +167,14 @@ public class KafkaConsumerLoop<K,V> {
     @FunctionalInterface
     public interface RecordHandlingFunction<K,V>{
         void handleRecord(ConsumerRecord<K,V> record) throws Exception;
+
+        default RecordHandlingFunction<K,V> andThen(RecordHandlingFunction<K,V> function){
+            Objects.requireNonNull(function);
+            return record -> {
+                handleRecord(record);
+                function.handleRecord(record);
+            };
+        }
     }
 
     static class NamedDefaultThreadPool implements ThreadFactory {
