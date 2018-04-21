@@ -1,6 +1,8 @@
-include 'kafkalibrary-consumer'
-include 'kafkalibrary-producer'
-include 'kafkalibrary-utils'
-include 'kafka-library-sample-client'
+rootProject.name = "kafka-tool-project"
 
-include 'kafka-tool'
+include ':sample-utils'
+include ':sample-consumer'
+include ':sample-producer'
+include ':sample-client'
+
+include ':kafka-tool'
