@@ -1,0 +1,12 @@
+{
+	"name": "DeviceComponentStatus",
+    "namespace": "processing",
+    "type": "record",
+    "fields" : [
+        {
+    		"name": "status",
+    		"type": "string",
+    		"default":"NONE"
+    	}
+    ]
+}

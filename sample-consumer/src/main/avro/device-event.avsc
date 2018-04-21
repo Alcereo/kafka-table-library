@@ -1,0 +1,23 @@
+{
+  "name": "DeviceEvent",
+  "namespace": "processing",
+  "type": "record",
+  "fields": [
+    {
+      "name": "timestamp",
+      "type": "string"
+    },
+    {
+      "name": "eventId",
+      "type": "string"
+    },
+    {
+      "name": "deviceId",
+      "type": "int"
+    },
+    {
+      "name": "componentId",
+      "type": "string"
+    }
+  ]
+}

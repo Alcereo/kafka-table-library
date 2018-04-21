@@ -1,0 +1,8 @@
+rootProject.name = "kafka-tool-project"
+
+include ':sample-utils'
+include ':sample-consumer'
+include ':sample-producer'
+include ':sample-client'
+
+include ':kafka-tool'

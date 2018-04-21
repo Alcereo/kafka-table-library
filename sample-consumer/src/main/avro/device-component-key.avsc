@@ -1,0 +1,15 @@
+{
+  "name": "ComponentDeviceKey",
+  "namespace": "processing",
+  "type": "record",
+  "fields": [
+    {
+      "name": "deviceId",
+      "type": "int"
+    },
+    {
+      "name": "componentId",
+      "type": "string"
+    }
+  ]
+}

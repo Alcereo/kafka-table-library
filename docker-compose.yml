@@ -1,0 +1,96 @@
+version: '3.2'
+services:
+
+  zookeeper:
+    image: alcereo/zookeeper:3.4.11
+    networks:
+      kafka-poligon:
+        ipv4_address: 192.170.0.2
+    
+
+  broker:
+    image: alcereo/kafka:1.0.1
+    environment: 
+      ZOOKEEPER_CONNECT: zookeeper:2181
+      ADVERTIZED_LISTENERS: "PLAINTEXT://192.170.0.3:9092"
+      KAFKA_INFLUXDB_METRICS_REPORTER_ENABLED: "true"
+      KAFKA_INFLUXDB_METRICS_ADDRESS: "http://192.170.0.1:8086"
+    depends_on:
+    - zookeeper
+    links:
+    - zookeeper
+    networks:
+      kafka-poligon:
+        ipv4_address: 192.170.0.3
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:4.0.1
+    environment: 
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+      SCHEMA_REGISTRY_BOOTSTRAP_SERVERS: "PLAINTEXT://192.170.0.3:9092"
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+      SCHEMA_REGISTRY_DEBUG: "true"
+      SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL: "backward"
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
+      SCHEMA_REGISTRY_HOST_NAME: "192.170.0.6"
+    depends_on:
+    - zookeeper
+    - broker
+    links:
+    - zookeeper
+    - broker
+    networks:
+      kafka-poligon:
+        ipv4_address: 192.170.0.6
+
+  rest-proxy:
+    image: confluentinc/cp-kafka-rest:4.0.1
+    environment: 
+      KAFKA_REST_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_REST_BOOTSTRAP_SERVERS: "PLAINTEXT://192.170.0.3:9092"
+      KAFKA_REST_HOST_NAME: "192.170.0.4"
+      KAFKA_REST_HOST_LISTENERS: "http://0.0.0.0:8082"
+      KAFKA_REST_SCHEMA_REGISTRY_URL: "http://192.170.0.6:8081"
+    depends_on:
+    - zookeeper
+    - schema-registry
+    links:
+    - zookeeper
+    networks:
+      kafka-poligon:
+        ipv4_address: 192.170.0.4
+
+  topics-ui:
+    image: landoop/kafka-topics-ui:0.9.3
+    environment: 
+      KAFKA_REST_PROXY_URL: "http://192.170.0.4:8082"
+      PROXY: "true"
+    depends_on:
+    - rest-proxy
+    links:
+    - rest-proxy
+    networks:
+      kafka-poligon:
+        ipv4_address: 192.170.0.5
+
+  schema-registry-ui:
+    image: landoop/schema-registry-ui:0.9.3
+    environment: 
+      SCHEMAREGISTRY_URL: "http://192.170.0.6:8081"
+      PROXY: "true"
+      PORT: "8080"
+    depends_on:
+    - schema-registry
+    links:
+    - schema-registry
+    networks:
+      kafka-poligon:
+        ipv4_address: 192.170.0.7
+
+networks:
+  kafka-poligon:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 192.170.0.0/16

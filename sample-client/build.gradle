@@ -1,0 +1,73 @@
+buildscript {
+	ext {
+		springBootVersion = '2.0.1.RELEASE'
+		avroPluginVersion = '0.14.1'
+	}
+	repositories {
+		mavenCentral()
+		jcenter()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath("com.commercehub.gradle.plugin:gradle-avro-plugin:${avroPluginVersion}")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'com.commercehub.gradle.plugin.avro'
+
+group = 'com.github.alcereo'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+	jcenter()
+	maven { url "https://repo.spring.io/milestone" }
+	maven { url "http://packages.confluent.io/maven/" }
+}
+
+
+ext {
+	springCloudVersion = 'Finchley.M9'
+}
+
+dependencies {
+
+	compile project(":kafka-tool")
+
+	compile('org.springframework.boot:spring-boot-starter-actuator')
+	compile('org.springframework.boot:spring-boot-starter-web'){
+		exclude module: 'spring-boot-starter-tomcat'
+	}
+	compile('org.springframework.boot:spring-boot-starter-webflux')
+	compile('org.springframework.boot:spring-boot-starter-jetty')
+	compile('org.springframework.cloud:spring-cloud-starter-config')
+
+	compile('org.apache.kafka:kafka-streams:1.0.0')
+	compile('org.apache.kafka:kafka-clients:1.0.0')
+
+//	AVRO ++
+	compile('org.apache.avro:avro:1.8.2')
+	compile('io.confluent:kafka-avro-serializer:4.0.0'){
+		exclude module: 'slf4j-log4j12'
+		exclude module: 'log4j'
+	}
+	compile('io.confluent:kafka-streams-avro-serde:4.0.0'){
+		exclude module: 'slf4j-log4j12'
+		exclude module: 'log4j'
+	}
+//	AVRO --
+
+	compileOnly('org.projectlombok:lombok')
+	testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
