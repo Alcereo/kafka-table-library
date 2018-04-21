@@ -1,9 +1,7 @@
 package com.github.alcereo.kafkatool.sample.client;
 
-import com.github.alcereo.kafkatool.KafkaConsumerLoop;
-import com.github.alcereo.kafkatool.KafkaConsumerWrapper;
-import com.github.alcereo.kafkatool.KafkaTool;
-import com.github.alcereo.kafkatool.KafkaTopicWrapper;
+import com.github.alcereo.kafkatool.*;
+import com.github.alcereo.kafkatool.topic.KtTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import processing.DeviceBusinessStatus;
@@ -20,14 +18,12 @@ public class KafkaConfig {
     }
 
     @Bean
-    public KafkaTopicWrapper<Integer, DeviceBusinessStatus> businessTopic(
+    public KtTopic<Integer, DeviceBusinessStatus> businessTopic(
             KafkaTool kafkaTool
     ){
-        return kafkaTool.topicBuilder()
-                .name(DEVICE_BUSINESS_STATUS_TABLE)
-                .enableTableSubscription()
-                .enableAvroSerDe()
-                .keyValueClass(Integer.class, DeviceBusinessStatus.class)
+        return kafkaTool
+                .topicAvroSimpleTableBuilder(Integer.class, DeviceBusinessStatus.class)
+                .topicName(DEVICE_BUSINESS_STATUS_TABLE)
                 .build();
     }
 
@@ -36,7 +32,7 @@ public class KafkaConfig {
     public KafkaConsumerLoop<Integer, DeviceBusinessStatus> businessStatusLoop(
             KafkaTool kafkaTool,
             DeviceBusinessStateInMemoryStore store,
-            KafkaTopicWrapper<Integer, DeviceBusinessStatus> businessTopic
+            KtTopic<Integer, DeviceBusinessStatus> businessTopic
     ){
 
         KafkaConsumerWrapper.Builder<Integer, DeviceBusinessStatus> consumerBuilder = kafkaTool.consumerWrapperBuilder()

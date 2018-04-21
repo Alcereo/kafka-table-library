@@ -1,5 +1,6 @@
 package com.github.alcereo.kafkatool;
 
+import com.github.alcereo.kafkatool.topic.AvroSimpleTableTopic;
 import lombok.NonNull;
 
 public class KafkaTool {
@@ -26,8 +27,8 @@ public class KafkaTool {
         return new KafkaProducerWrapper.Builder<>(brokers, schemaRegistryUrl);
     }
 
-    public <K,V> KafkaTopicWrapper.Builder<K,V> topicBuilder(){
-        return new KafkaTopicWrapper.Builder<>();
+    public <K,V> AvroSimpleTableTopic.Builder<K,V> topicAvroSimpleTableBuilder(Class<K> keyClass, Class<V> valueClass){
+        return AvroSimpleTableTopic.<K,V>builder().schemaRegisterUrl(schemaRegistryUrl);
     }
 
     public <K,V> KafkaConsumerWrapper.Builder<K,V> consumerWrapperBuilder(){
