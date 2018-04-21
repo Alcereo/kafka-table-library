@@ -1,7 +1,7 @@
 package com.github.alcereo.kafkatool.sample.consumer;
 
-import com.github.alcereo.kafkatool.KafkaConsumerLoop;
-import com.github.alcereo.kafkatool.KafkaConsumerWrapper;
+import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
+import com.github.alcereo.kafkatool.consumer.KtConsumer;
 import com.github.alcereo.kafkatool.KafkaProducerWrapper;
 import com.github.alcereo.kafkatool.KafkaTool;
 import lombok.extern.slf4j.Slf4j;
@@ -32,13 +32,13 @@ public class EventProcessing {
     }
 
     @Bean(destroyMethod = "close")
-    public KafkaConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusLoop(
+    public KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusLoop(
             @Value("${device-state-consumer-group}") String deviceStateConsumerGroup,
             KafkaTool kafkaTool,
             DeviceBusinessStateInMemoryStore deviceStatusesStore
     ) {
 
-        KafkaConsumerWrapper.Builder<Integer, DeviceBusinessStatus> deviceBusinessStatusconsumerBuilder = kafkaTool
+        KtConsumer.Builder<Integer, DeviceBusinessStatus> deviceBusinessStatusconsumerBuilder = kafkaTool
                 .consumerWrapperBuilder()
                 .consumerGroup(deviceStateConsumerGroup)
                 .enableAvroSerDe()
@@ -46,8 +46,8 @@ public class EventProcessing {
                 .keyValueClass(Integer.class, DeviceBusinessStatus.class)
                 .topic(DEVICE_BUSINESS_STATUS_TABLE);
 
-        KafkaConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusConsumerLoop = kafkaTool
-                .consumerLoopBuilder(deviceBusinessStatusconsumerBuilder)
+        KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusConsumerLoop = kafkaTool
+                .FixedThreadSyncSequetalLoopBuilder(deviceBusinessStatusconsumerBuilder)
                 .threadsNumber(5)
                 .recordFunctionHandling(record -> {
                     log.trace("Don't save record by header");
@@ -81,20 +81,20 @@ public class EventProcessing {
     }
 
     @Bean(destroyMethod = "close")
-    public KafkaConsumerLoop<Integer, DeviceEvent> eventsLoop(
+    public KtConsumerLoop<Integer, DeviceEvent> eventsLoop(
             KafkaTool kafkaTool,
             EventInMemoryStore store,
             DeviceBusinessStateInMemoryStore deviceStatusesStore,
             KafkaProducerWrapper<Integer, DeviceBusinessStatus> businessStatusProducer
     ) {
 
-        KafkaConsumerWrapper.Builder<Integer, DeviceEvent> eventsConsumer = kafkaTool.consumerWrapperBuilder()
+        KtConsumer.Builder<Integer, DeviceEvent> eventsConsumer = kafkaTool.consumerWrapperBuilder()
                 .consumerGroup("event-consumer-1")
                 .enableAvroSerDe()
                 .keyValueClass(Integer.class, DeviceEvent.class)
                 .topic(EVENT_TOPIC);
 
-        KafkaConsumerLoop<Integer, DeviceEvent> eventsConsumerLoop = kafkaTool.consumerLoopBuilder(eventsConsumer)
+        KtConsumerLoop<Integer, DeviceEvent> eventsConsumerLoop = kafkaTool.FixedThreadSyncSequetalLoopBuilder(eventsConsumer)
                 .threadsNumber(5)
                 .recordFunctionHandling(record -> {
                     DeviceEvent deviceEvent = record.value();

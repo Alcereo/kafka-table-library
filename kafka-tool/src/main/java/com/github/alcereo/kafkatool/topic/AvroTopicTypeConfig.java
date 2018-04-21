@@ -2,46 +2,50 @@ package com.github.alcereo.kafkatool.topic;
 
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import lombok.Builder;
+import lombok.NonNull;
 
 import java.util.Properties;
 
-public interface AvroTopic<K,V> extends KtTopic<K, V> {
+@Builder
+public class AvroTopicTypeConfig<K,V> implements TopicTypeConfig<K, V> {
 
-    String getSchemaRegisterUrl();
+    @NonNull
+    private String schemaRegistryUrl;
 
     @Override
-    default String getKeySerializerClassName() {
+    public String getKeySerializerClassName() {
         return KafkaAvroSerializer.class.getName();
     }
 
     @Override
-    default String getKeyDeserializerClassName() {
+    public String getKeyDeserializerClassName() {
         return KafkaAvroDeserializer.class.getName();
     }
 
     @Override
-    default String getValueSerializerClassName() {
+    public String getValueSerializerClassName() {
         return KafkaAvroSerializer.class.getName();
     }
 
     @Override
-    default String getValueDeserializerClassName() {
+    public String getValueDeserializerClassName() {
         return KafkaAvroDeserializer.class.getName();
     }
 
     @Override
-    default Properties getAdditionalConsumerProperties() {
+    public Properties getAdditionalConsumerProperties() {
         Properties properties = new Properties();
-        properties.put("schema.registry.url", getSchemaRegisterUrl());
+        properties.put("schema.registry.url", schemaRegistryUrl);
         properties.put("specific.avro.reader", "true");
 
         return properties;
     }
 
     @Override
-    default Properties getAdditionalProducerProperties() {
+    public Properties getAdditionalProducerProperties() {
         Properties properties = new Properties();
-        properties.put("schema.registry.url", getSchemaRegisterUrl());
+        properties.put("schema.registry.url", schemaRegistryUrl);
 
         return properties;
     }

@@ -1,21 +1,20 @@
 package com.github.alcereo.kafkatool.topic;
 
-import com.github.alcereo.kafkatool.KtConsumer;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
+import com.github.alcereo.kafkatool.consumer.KtConsumer;
+import lombok.Builder;
+import lombok.NonNull;
 
 import java.util.Collection;
 
-public interface DefaultStreamSubscribe<K,V> extends KtTopic<K,V> {
+@Builder
+public class DefaultStreamSubscribe<K,V> implements Subscriber<K,V> {
 
-    Collection<String> getTopicsNames(String consumerGroup);
+    @NonNull
+    private Collection<String> topicsCollection;
 
     @Override
-    default void subscribe(KtConsumer<K, V> consumer) {
-        final KafkaConsumer<K, V> kafkaConsumer = consumer.getKafkaConsumer();
-
-        kafkaConsumer.subscribe(
-                getTopicsNames(consumer.getConsumerGroup())
-        );
+    public void subscribe(KtConsumer<K, V> consumer) {
+        consumer.getKafkaConsumer().subscribe(topicsCollection);
     }
 
 }

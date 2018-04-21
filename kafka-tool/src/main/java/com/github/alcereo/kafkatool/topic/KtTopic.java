@@ -1,9 +1,5 @@
 package com.github.alcereo.kafkatool.topic;
 
-import com.github.alcereo.kafkatool.KtConsumer;
-
-import java.util.Properties;
-
 public interface KtTopic<K,V> {
 
     /**
@@ -27,27 +23,10 @@ public interface KtTopic<K,V> {
      */
     NewTopicConfig getNewTopicConfig();
 
-    /**
-     * Subscribe consumer to topic
-     * @param consumer Consumer for subscribe
-     */
-    void subscribe(KtConsumer<K, V> consumer);
+
+    Subscriber<K,V> getSubcriber();
 
 
-//    Key value types responsibility
-
-    String getKeySerializerClassName();
-    String getKeyDeserializerClassName();
-
-    String getValueSerializerClassName();
-    String getValueDeserializerClassName();
-
-    default Properties getAdditionalConsumerProperties(){
-        return new Properties();
-    }
-
-    default Properties getAdditionalProducerProperties(){
-        return new Properties();
-    }
+    TopicTypeConfig<K,V> getTopicTypeConfig();
 
 }

@@ -1,6 +1,9 @@
 package com.github.alcereo.kafkatool;
 
+import com.github.alcereo.kafkatool.consumer.FixedThreadSyncSequetalLoop;
+import com.github.alcereo.kafkatool.consumer.KtConsumer;
 import com.github.alcereo.kafkatool.topic.AvroSimpleTableTopic;
+import com.github.alcereo.kafkatool.topic.KtTopic;
 import lombok.NonNull;
 
 public class KafkaTool {
@@ -31,11 +34,11 @@ public class KafkaTool {
         return AvroSimpleTableTopic.<K,V>builder().schemaRegisterUrl(schemaRegistryUrl);
     }
 
-    public <K,V> KafkaConsumerWrapper.Builder<K,V> consumerWrapperBuilder(){
-        return new KafkaConsumerWrapper.Builder<>(brokers, schemaRegistryUrl);
+    public <K,V> KtConsumer.Builder<K,V> consumerBuilder(KtTopic<K,V> topic){
+        return KtConsumer.<K,V>builder().brokers(brokers).topic(topic);
     }
 
-    public <K, V> KafkaConsumerLoop.Builder<K, V> consumerLoopBuilder(@NonNull KafkaConsumerWrapper.Builder<K,V> consumerBuilder) {
-        return new KafkaConsumerLoop.Builder<>(consumerBuilder);
+    public <K, V> FixedThreadSyncSequetalLoop.LoopBuilder<K, V> FixedThreadSyncSequetalLoopBuilder(KtConsumer.Builder<K,V> consumerBuilder) {
+        return FixedThreadSyncSequetalLoop.<K,V>builder().consumerBuilder(consumerBuilder);
     }
 }

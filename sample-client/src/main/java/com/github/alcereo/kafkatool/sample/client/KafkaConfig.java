@@ -1,6 +1,8 @@
 package com.github.alcereo.kafkatool.sample.client;
 
-import com.github.alcereo.kafkatool.*;
+import com.github.alcereo.kafkatool.KafkaTool;
+import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
+import com.github.alcereo.kafkatool.consumer.SimpleStorageHandler;
 import com.github.alcereo.kafkatool.topic.KtTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,19 +31,22 @@ public class KafkaConfig {
 
 
     @Bean(destroyMethod = "close")
-    public KafkaConsumerLoop<Integer, DeviceBusinessStatus> businessStatusLoop(
+    public KtConsumerLoop<Integer, DeviceBusinessStatus> businessStatusLoop(
             KafkaTool kafkaTool,
             DeviceBusinessStateInMemoryStore store,
             KtTopic<Integer, DeviceBusinessStatus> businessTopic
     ){
 
-        KafkaConsumerWrapper.Builder<Integer, DeviceBusinessStatus> consumerBuilder = kafkaTool.consumerWrapperBuilder()
-                .consumerGroup("device-status-client-1")
-                .topic(businessTopic);
-
-        KafkaConsumerLoop<Integer, DeviceBusinessStatus> consumerLoop = kafkaTool.consumerLoopBuilder(consumerBuilder)
-                .threadsNumber(5)
-                .connectStorage(store)
+        KtConsumerLoop<Integer, DeviceBusinessStatus> consumerLoop = kafkaTool
+                .FixedThreadSyncSequetalLoopBuilder(
+                        kafkaTool.consumerBuilder(businessTopic)
+                                .consumerGroup("device-status-client-1")
+                ).threadsNumber(5)
+                .recordHandler(
+                        SimpleStorageHandler
+                                .builderFromStore(store)
+                                .build()
+                )
                 .build();
 
         consumerLoop.start();
