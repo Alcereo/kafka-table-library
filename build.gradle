@@ -1,2 +1,50 @@
 group = 'com.github.alcereo'
 version = '0.0.1-SNAPSHOT'
+
+subprojects {
+
+    apply plugin: 'java'
+
+    ext.extLibDir = new File(rootDir, 'ext-libs')
+
+    repositories {
+        flatDir dirs: extLibDir
+    }
+
+    task download {
+        inputs.files configurations.runtime
+        outputs.dir extLibDir
+        doLast {
+            def componentIds = configurations.runtime.incoming.resolutionResult.allDependencies.collect { it.selected.id }
+            ArtifactResolutionResult result = dependencies.createArtifactResolutionQuery()
+                    .forComponents(componentIds)
+                    .withArtifacts(JvmLibrary, SourcesArtifact)
+                    .execute()
+            def artifacts = []
+            result.resolvedComponents.each { ComponentArtifactsResult component ->
+                Set<ArtifactResult> sources = component.getArtifacts(SourcesArtifact)
+                println "Found ${sources.size()} sources for ${component.id}"
+                sources.each { ArtifactResult ar ->
+                    if (ar instanceof ResolvedArtifactResult) {
+                        artifacts << ar.file
+                    }
+                }
+
+                Set<ArtifactResult> javaDocs = component.getArtifacts(JavadocArtifact)
+                println "Found ${javaDocs.size()} javaDocs for ${component.id}"
+                javaDocs.each { ArtifactResult ar ->
+                    if (ar instanceof ResolvedArtifactResult) {
+                        artifacts << ar.file
+                    }
+                }
+            }
+
+            copy {
+                from configurations.runtime
+                from artifacts
+                into extLibDir
+            }
+        }
+
+    }
+}
