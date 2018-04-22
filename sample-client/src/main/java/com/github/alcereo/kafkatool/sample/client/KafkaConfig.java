@@ -2,7 +2,6 @@ package com.github.alcereo.kafkatool.sample.client;
 
 import com.github.alcereo.kafkatool.KafkaTool;
 import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
-import com.github.alcereo.kafkatool.consumer.SimpleStorageHandler;
 import com.github.alcereo.kafkatool.topic.KtTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +25,7 @@ public class KafkaConfig {
         return kafkaTool
                 .topicAvroSimpleTableBuilder(Integer.class, DeviceBusinessStatus.class)
                 .topicName(DEVICE_BUSINESS_STATUS_TABLE)
+                .numPartitions(20)
                 .build();
     }
 
@@ -42,11 +42,7 @@ public class KafkaConfig {
                         kafkaTool.consumerBuilder(businessTopic)
                                 .consumerGroup("device-status-client-1")
                 ).threadsNumber(5)
-                .recordHandler(
-                        SimpleStorageHandler
-                                .builderFromStore(store)
-                                .build()
-                )
+                .recordHandler(store.defaultHandler())
                 .build();
 
         consumerLoop.start();

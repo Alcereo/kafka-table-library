@@ -1,13 +1,12 @@
 package com.github.alcereo.kafkatool.sample.consumer;
 
-import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
-import com.github.alcereo.kafkatool.consumer.KtConsumer;
 import com.github.alcereo.kafkatool.KafkaProducerWrapper;
 import com.github.alcereo.kafkatool.KafkaTool;
+import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
+import com.github.alcereo.kafkatool.topic.KtTopic;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import processing.DeviceBusinessStatus;
 import processing.DeviceEvent;
@@ -20,7 +19,6 @@ import static com.github.alcereo.kafkatool.sample.consumer.Application.*;
 
 @Slf4j
 @Configuration
-@ComponentScan("com.github.alcereo.kafkatable")
 public class EventProcessing {
 
     private static final byte[] sessionUUID = UUID.randomUUID().toString().getBytes();
@@ -31,25 +29,37 @@ public class EventProcessing {
                 .schemaRegistry(SCHEMA_REGISTRY_URL);
     }
 
+    @Bean
+    public KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic(KafkaTool kafkaTool) {
+        return kafkaTool
+                .topicAvroSimpleTableBuilder(Integer.class, DeviceBusinessStatus.class)
+                .topicName(DEVICE_BUSINESS_STATUS_TABLE)
+                .numPartitions(NUM_PARTS)
+                .build();
+    }
+
+    @Bean
+    public KtTopic<Integer, DeviceEvent> eventTopic(KafkaTool kafkaTool) {
+        return kafkaTool
+                .topicAvroSimpleStreamBuilder(Integer.class, DeviceEvent.class)
+                .topicName(EVENT_TOPIC)
+                .numPartitions(NUM_PARTS)
+                .build();
+    }
+
     @Bean(destroyMethod = "close")
     public KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusLoop(
             @Value("${device-state-consumer-group}") String deviceStateConsumerGroup,
             KafkaTool kafkaTool,
+            KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic,
             DeviceBusinessStateInMemoryStore deviceStatusesStore
     ) {
 
-        KtConsumer.Builder<Integer, DeviceBusinessStatus> deviceBusinessStatusconsumerBuilder = kafkaTool
-                .consumerWrapperBuilder()
-                .consumerGroup(deviceStateConsumerGroup)
-                .enableAvroSerDe()
-                .enableTableSubscription()
-                .keyValueClass(Integer.class, DeviceBusinessStatus.class)
-                .topic(DEVICE_BUSINESS_STATUS_TABLE);
-
         KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusConsumerLoop = kafkaTool
-                .FixedThreadSyncSequetalLoopBuilder(deviceBusinessStatusconsumerBuilder)
-                .threadsNumber(5)
-                .recordFunctionHandling(record -> {
+                .FixedThreadSyncSequetalLoopBuilder(
+                        kafkaTool.consumerBuilder(businessStatusTopic)
+                            .consumerGroup(deviceStateConsumerGroup)
+                ).recordHandler(record -> {
                     log.trace("Don't save record by header");
 
                     if (record.headers().lastHeader("session") != null) {
@@ -61,7 +71,8 @@ public class EventProcessing {
                     } else {
                         deviceStatusesStore.externalUpsert(record.key(), record.value());
                     }
-                }).build();
+                })
+                .build();
 
         deviceBusinessStatusConsumerLoop.start();
 
@@ -83,20 +94,18 @@ public class EventProcessing {
     @Bean(destroyMethod = "close")
     public KtConsumerLoop<Integer, DeviceEvent> eventsLoop(
             KafkaTool kafkaTool,
+            KtTopic<Integer, DeviceEvent> eventTopic,
             EventInMemoryStore store,
             DeviceBusinessStateInMemoryStore deviceStatusesStore,
             KafkaProducerWrapper<Integer, DeviceBusinessStatus> businessStatusProducer
     ) {
 
-        KtConsumer.Builder<Integer, DeviceEvent> eventsConsumer = kafkaTool.consumerWrapperBuilder()
-                .consumerGroup("event-consumer-1")
-                .enableAvroSerDe()
-                .keyValueClass(Integer.class, DeviceEvent.class)
-                .topic(EVENT_TOPIC);
-
-        KtConsumerLoop<Integer, DeviceEvent> eventsConsumerLoop = kafkaTool.FixedThreadSyncSequetalLoopBuilder(eventsConsumer)
-                .threadsNumber(5)
-                .recordFunctionHandling(record -> {
+        KtConsumerLoop<Integer, DeviceEvent> eventsConsumerLoop = kafkaTool
+                .FixedThreadSyncSequetalLoopBuilder(
+                        kafkaTool
+                                .consumerBuilder(eventTopic)
+                                .consumerGroup("event-consumer-1")
+                ).recordHandler(record -> {
                     DeviceEvent deviceEvent = record.value();
 
                     if (deviceEvent.getEventId().equals("1")) {

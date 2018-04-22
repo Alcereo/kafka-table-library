@@ -1,6 +1,6 @@
 package com.github.alcereo.kafkatool.sample.client;
 
-import com.github.alcereo.kafkatool.KtStorage;
+import com.github.alcereo.kafkatool.consumer.KtStorage;
 import org.springframework.stereotype.Component;
 import processing.DeviceBusinessStatus;
 

@@ -1,6 +1,5 @@
 package com.github.alcereo.kafkatool.consumer;
 
-import com.github.alcereo.kafkatool.KtStorage;
 import lombok.Builder;
 import lombok.NonNull;
 import org.apache.kafka.clients.consumer.ConsumerRecord;

@@ -9,9 +9,9 @@ import java.util.concurrent.Executors;
 public class FixedThreadSyncSequetalLoop<K,V> extends KtConsumerLoop<K, V> {
 
     @Builder(builderClassName = "LoopBuilder")
-    public FixedThreadSyncSequetalLoop(Integer threadsNumber,
-                                       @NonNull KtConsumer.Builder<K,V> consumerBuilder,
-                                       @NonNull ConsumerRecordHandler<K, V> recordHandler) {
+    public FixedThreadSyncSequetalLoop(@NonNull KtConsumer.Builder<K,V> consumerBuilder,
+                                       @NonNull ConsumerRecordHandler<K, V> recordHandler,
+                                       Integer threadsNumber) {
 
         super(
                 Executors.newFixedThreadPool(

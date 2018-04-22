@@ -1,5 +1,6 @@
 package com.github.alcereo.kafkatool.sample.consumer;
 
+import com.github.alcereo.kafkatool.consumer.KtStorage;
 import lombok.Builder;
 import lombok.Value;
 import org.springframework.stereotype.Component;
@@ -8,7 +9,7 @@ import processing.DeviceBusinessStatus;
 import java.util.HashMap;
 
 @Component
-public class DeviceBusinessStateInMemoryStore {
+public class DeviceBusinessStateInMemoryStore implements KtStorage<Integer,DeviceBusinessStatus> {
 
     private HashMap<Integer, StatusRecord> statuses = new HashMap<>();
 

@@ -1,12 +1,12 @@
 package com.github.alcereo.kafkatool.sample.producer;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static com.github.alcereo.kafkatool.sample.producer.Application.PARTITIONER_NUMPARTS_PROPERTY_NAME;
-import static org.junit.Assert.assertEquals;
 
 public class PartitionerTest {
 

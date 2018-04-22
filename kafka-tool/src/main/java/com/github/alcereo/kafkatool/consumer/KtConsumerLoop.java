@@ -1,7 +1,6 @@
 package com.github.alcereo.kafkatool.consumer;
 
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -15,12 +14,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-@Builder
+//@Builder(buildMethodName = "buildLoop")
 public class KtConsumerLoop<K,V> {
 
     private ExecutorService threadPool;
     private KtConsumer.Builder<K, V> consumerBuilder;
-    private List<KtConsumer<K, V>> consumers = new ArrayList<>();
+    private final List<KtConsumer<K, V>> consumers = new ArrayList<>();
 
     @NonNull
     private ConsumerRecordHandler<K, V> recordHandler;
