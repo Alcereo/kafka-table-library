@@ -1,7 +1,6 @@
 package com.github.alcereo.kafkatool.sample.producer;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import com.github.alcereo.kafkatool.producer.KtProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,14 +11,12 @@ import reactor.core.publisher.Mono;
 
 import java.util.concurrent.ExecutionException;
 
-import static com.github.alcereo.kafkatool.sample.producer.Application.EVENT_TOPIC;
-
 @RestController
 @RequestMapping("event")
 public class EventsController {
 
     @Autowired
-    private KafkaProducer<Integer, DeviceEvent> kafkaProducer;
+    private KtProducer<Integer, DeviceEvent> produer;
 
     @PostMapping
     private Mono<String> event(@RequestBody Mono<DeviceEvent> eventMono) {
@@ -27,13 +24,7 @@ public class EventsController {
         return eventMono.map(
                 event -> {
                     try {
-                        kafkaProducer.send(
-                                new ProducerRecord<>(
-                                        EVENT_TOPIC,
-                                        event.getDeviceId(),
-                                        event
-                                )
-                        ).get();
+                        produer.sendSync(event.getDeviceId(), event);
                     } catch (InterruptedException | ExecutionException e) {
                         throw new RuntimeException(e);
                     }
