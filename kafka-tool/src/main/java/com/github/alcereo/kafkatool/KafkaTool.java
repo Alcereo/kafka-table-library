@@ -2,6 +2,8 @@ package com.github.alcereo.kafkatool;
 
 import com.github.alcereo.kafkatool.consumer.FixedThreadSyncSequetalLoop;
 import com.github.alcereo.kafkatool.consumer.KtConsumer;
+import com.github.alcereo.kafkatool.producer.KtPartitionerKeyPartAppropriate;
+import com.github.alcereo.kafkatool.producer.KtProducer;
 import com.github.alcereo.kafkatool.topic.AvroSimpleStreamTopic;
 import com.github.alcereo.kafkatool.topic.AvroSimpleTableTopic;
 import com.github.alcereo.kafkatool.topic.KtTopic;
@@ -27,8 +29,21 @@ public class KafkaTool {
         return this;
     }
 
-    public <K,V> KafkaProducerWrapper.Builder<K,V> producerWrapperBuilder() {
-        return new KafkaProducerWrapper.Builder<>(brokers, schemaRegistryUrl);
+    /**
+     * <b>REQUIRED PROPERTIES<b>
+     * <br>
+     * <br><b>Optional properties<b>
+     *
+     */
+    public <K,V> KtProducer.Builder<K,V> producerKeyPartAppropriatingBuilder(KtTopic<K,V> topic) {
+        return KtProducer.<K,V>builder()
+                .topic(topic)
+                .brokers(brokers)
+                .partitioner(
+                        KtPartitionerKeyPartAppropriate.<K,V>builder()
+                            .numParts(topic.getNewTopicConfig().getMunPartitions())
+                            .build()
+                );
     }
 
     /**
