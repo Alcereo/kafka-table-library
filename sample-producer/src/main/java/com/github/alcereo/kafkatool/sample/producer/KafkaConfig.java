@@ -3,6 +3,7 @@ package com.github.alcereo.kafkatool.sample.producer;
 import com.github.alcereo.kafkatool.KafkaTool;
 import com.github.alcereo.kafkatool.producer.KtProducer;
 import com.github.alcereo.kafkatool.topic.KtTopic;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import processing.DeviceEvent;
@@ -13,9 +14,12 @@ import static com.github.alcereo.kafkatool.sample.producer.Application.*;
 public class KafkaConfig {
 
     @Bean
-    public KafkaTool kafkaTool(){
-        return KafkaTool.fromBrokers(BROKERS)
-                .schemaRegistry(SCHEMA_REGISTRY_URL);
+    public KafkaTool kafkaTool(MeterRegistry registry){
+        return KafkaTool.builder()
+                .brokers(BROKERS)
+                .schemaRegistryUrl(SCHEMA_REGISTRY_URL)
+                .meterRegistry(registry)
+                .build();
     }
 
 
@@ -35,7 +39,8 @@ public class KafkaConfig {
             KtTopic<Integer, DeviceEvent> eventTopic
     ){
         return kafkaTool.producerKeyPartAppropriatingBuilder(eventTopic)
-                    .build();
+                .name("event-producer")
+                .build();
     }
 
 }
