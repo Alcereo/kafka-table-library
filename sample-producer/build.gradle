@@ -47,7 +47,7 @@ dependencies {
 	}
 	compile('org.springframework.boot:spring-boot-starter-webflux')
 	compile('org.springframework.boot:spring-boot-starter-jetty')
-	compile('org.springframework.cloud:spring-cloud-starter-config')
+//	compile('org.springframework.cloud:spring-cloud-starter-config')
 
 	compile('org.apache.kafka:kafka-streams:1.0.0')
 	compile('org.apache.kafka:kafka-clients:1.0.0')

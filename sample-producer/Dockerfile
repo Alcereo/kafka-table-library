@@ -1,0 +1,12 @@
+FROM java
+
+ENV SERVER_PORT=8080
+ENV KAFKA_BROKERS="192.170.0.3:9092"
+ENV KAFKA_REGISTRY_URL="http://192.170.0.6:8081"
+
+ENV KAFKA_TOPIC_EVENT_NAME="event-topic"
+ENV KAFKA_TOPIC_EVENT_NUMPARTS="20"
+
+ADD ./sample-producer-0.0.1-SNAPSHOT.jar /sample-producer-0.0.1-SNAPSHOT.jar
+
+CMD ["java", "-jar", "/sample-producer-0.0.1-SNAPSHOT.jar"]
