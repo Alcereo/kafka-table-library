@@ -73,8 +73,8 @@ public class KafkaTool {
      * <br>- <b>replicaNumber</b> - (default: 1)
      *
      */
-    public <K,V> AvroSimpleTableTopic.Builder<K,V> topicAvroSimpleTableBuilder(Class<K> keyClass, Class<V> valueClass){
-        return AvroSimpleTableTopic.<K,V>builder().schemaRegisterUrl(context.getSchemaRegistryUrl());
+    public <K,V> AvroSimpleTableTopic.KtAvroSimpleTableTopicBuilder<K,V> topicAvroSimpleTableBuilder(Class<K> keyClass, Class<V> valueClass){
+        return AvroSimpleTableTopic.<K,V>ktBuild(context);
     }
 
     /**

@@ -10,13 +10,6 @@ public interface KtTopic<K,V> {
      */
     String getTopicName(K key, V value);
 
-//    /**
-//     * Send message to topic resp.
-//     * @param consumerGroup Consumer group name
-//     * @return Topic name
-//     */
-//    String getTopicName(String consumerGroup);
-
     /**
      * Topic creation responsibility
      * @return Config data used for topic creation
