@@ -7,27 +7,47 @@ import com.github.alcereo.kafkatool.producer.KtProducer;
 import com.github.alcereo.kafkatool.topic.AvroSimpleStreamTopic;
 import com.github.alcereo.kafkatool.topic.AvroSimpleTableTopic;
 import com.github.alcereo.kafkatool.topic.KtTopic;
+import io.micrometer.core.instrument.MeterRegistry;
+import lombok.Builder;
 import lombok.NonNull;
 
 public class KafkaTool {
 
-    private String brokers;
-    private String schemaRegistryUrl;
+    private KtContext context;
 
-    private KafkaTool(String brokers) {
-        this.brokers = brokers;
+    public KafkaTool(@NonNull KtContext context) {
+        this.context = context;
     }
 
-//    Public API
-
-    public static KafkaTool fromBrokers(@NonNull String brokers) {
-        return new KafkaTool(brokers);
+    /**
+     * <b>REQUIRED PROPERTIES<b>
+     * <br>- <b>brokers</b>
+     * <br>
+     * <br><b>Optional properties<b>
+     * <br>- <b>meterRegistry</b>
+     * <br>- <b>schemaRegistryUrl</b>
+     *
+     * <p></p>
+     */
+    public static KafkaToolBuilder builder(){
+        return new KafkaToolBuilder();
     }
 
-    public KafkaTool schemaRegistry(String url){
-        this.schemaRegistryUrl = url;
-        return this;
+    @Builder
+    private static KafkaTool fromContextBuilder(
+            @NonNull String brokers,
+            MeterRegistry meterRegistry,
+            String schemaRegistryUrl
+    ){
+        KtContext context = KtContext.builder()
+                .brokers(brokers)
+                .meterRegistry(meterRegistry)
+                .schemaRegistryUrl(schemaRegistryUrl)
+                .build();
+
+        return new KafkaTool(context);
     }
+
 
     /**
      * <b>REQUIRED PROPERTIES<b>
@@ -35,15 +55,13 @@ public class KafkaTool {
      * <br><b>Optional properties<b>
      *
      */
-    public <K,V> KtProducer.Builder<K,V> producerKeyPartAppropriatingBuilder(KtTopic<K,V> topic) {
-        return KtProducer.<K,V>builder()
-                .topic(topic)
-                .brokers(brokers)
-                .partitioner(
-                        KtPartitionerKeyPartAppropriate.<K,V>builder()
-                            .numParts(topic.getNewTopicConfig().getMunPartitions())
-                            .build()
-                );
+    public <K,V> KtProducer.KtProducerBuilder<K,V> producerKeyPartAppropriatingBuilder(KtTopic<K,V> topic) {
+
+        KtPartitionerKeyPartAppropriate<K, V> partitioner = KtPartitionerKeyPartAppropriate.<K, V>builder()
+                .numParts(topic.getNewTopicConfig().getMunPartitions())
+                .build();
+
+        return KtProducer.ktBuild(context, topic, partitioner);
     }
 
     /**
@@ -56,7 +74,7 @@ public class KafkaTool {
      *
      */
     public <K,V> AvroSimpleTableTopic.Builder<K,V> topicAvroSimpleTableBuilder(Class<K> keyClass, Class<V> valueClass){
-        return AvroSimpleTableTopic.<K,V>builder().schemaRegisterUrl(schemaRegistryUrl);
+        return AvroSimpleTableTopic.<K,V>builder().schemaRegisterUrl(context.getSchemaRegistryUrl());
     }
 
     /**
@@ -69,7 +87,7 @@ public class KafkaTool {
      *
      */
     public <K,V> AvroSimpleStreamTopic.Builder<K,V> topicAvroSimpleStreamBuilder(Class<K> keyClass, Class<V> valueClass){
-        return AvroSimpleStreamTopic.<K,V>builder().schemaRegisterUrl(schemaRegistryUrl);
+        return AvroSimpleStreamTopic.<K,V>builder().schemaRegisterUrl(context.getSchemaRegistryUrl());
     }
 
     /**
@@ -80,7 +98,7 @@ public class KafkaTool {
      * <br>- <b>maxPollRecords</b> - (default: 500)
      */
     public <K,V> KtConsumer.Builder<K,V> consumerBuilder(KtTopic<K,V> topic){
-        return KtConsumer.<K,V>builder().brokers(brokers).topic(topic);
+        return KtConsumer.<K,V>builder().brokers(context.getBrokers()).topic(topic);
     }
 
     /**
@@ -90,7 +108,7 @@ public class KafkaTool {
      * <br><b>Optional properties<b>
      * <br>- <b>threadsNumber</b> - (default: 5)
      */
-    public <K, V> FixedThreadSyncSequetalLoop.LoopBuilder<K, V> FixedThreadSyncSequetalLoopBuilder(KtConsumer.Builder<K,V> consumerBuilder) {
-        return FixedThreadSyncSequetalLoop.<K,V>builder().consumerBuilder(consumerBuilder);
+    public <K, V> FixedThreadSyncSequetalLoop.KtBuilder<K, V> FixedThreadSyncSequetalLoopBuilder(KtConsumer.Builder<K,V> consumerBuilder) {
+        return FixedThreadSyncSequetalLoop.ktBuilder(consumerBuilder, context);
     }
 }
