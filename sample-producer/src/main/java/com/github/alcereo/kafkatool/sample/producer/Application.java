@@ -17,9 +17,6 @@ import org.springframework.web.reactive.config.EnableWebFlux;
 @Slf4j
 public class Application{
 
-//    static final String BROKERS = "35.227.92.147:9092,35.227.115.219:9092,35.227.112.251:9092";
-//    static final String SCHEMA_REGISTRY_URL = "http://35.196.173.108:8081";
-
     public static void main(String[] args) throws Exception {
         new SpringApplicationBuilder()
                 .web(WebApplicationType.REACTIVE)

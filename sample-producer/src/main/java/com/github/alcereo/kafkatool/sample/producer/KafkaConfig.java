@@ -14,11 +14,11 @@ import java.util.concurrent.ExecutionException;
 @Configuration
 public class KafkaConfig {
 
-    @Value("${kafka.topic.event.name}")
+    @Value("${kafka.topic.event.name:event-topic}")
     String EVENT_TOPIC;
 
-    @Value("${kafka.topic.event.numparts}")
-    Integer NUM_PARTS = 20;
+    @Value("${kafka.topic.event.numparts:20}")
+    Integer NUM_PARTS;
 
     @Value("${kafka.brokers}")
     String BROKERS;
