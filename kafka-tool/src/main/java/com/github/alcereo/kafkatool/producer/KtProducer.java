@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -143,6 +144,10 @@ public class KtProducer<K,V>{
     ){
         Properties producerConfig = new Properties();
 
+        String finalName = (name == null ? UUID.randomUUID().toString() : name);
+
+        producerConfig.put("client.id", finalName);
+
         producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, context.getBrokers());
 
 //        Partitioner
@@ -168,15 +173,15 @@ public class KtProducer<K,V>{
         KafkaProducer<K,V> kafkaProducer = new KafkaProducer<>(producerConfig);
 
         Timer timer = context.getMeterRegistry().map(
-                meterRegistry -> Timer.builder("kafka-tools.producer." + (name == null ? nameMetricCounter.getAndIncrement() : name))
+                meterRegistry -> Timer.builder("kafka-tools.producer." + finalName)
                                     .publishPercentiles(0.5, 0.70, 0.80, 0.95, 0.98, 0.99)
                                     .publishPercentileHistogram()
                                     .register(meterRegistry)
         ).orElse(
-                new NoopTimer(new Meter.Id("kafka-tools.producer." + nameMetricCounter.getAndIncrement(), new ArrayList<>(), null, null, Meter.Type.TIMER))
+                new NoopTimer(new Meter.Id("kafka-tools.producer." + finalName, new ArrayList<>(), null, null, Meter.Type.TIMER))
         );
 
-        return new KtProducer<>(name, kafkaProducer, topic, timer);
+        return new KtProducer<>(finalName, kafkaProducer, topic, timer);
     }
 
     public static <K,V> KtProducerBuilder<K,V> ktBuild(KtContext context, KtTopic<K,V> topic, KtPartitioner<K,V> partitioner){
