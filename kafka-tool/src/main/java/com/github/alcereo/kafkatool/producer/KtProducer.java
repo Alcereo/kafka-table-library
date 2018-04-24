@@ -1,61 +1,46 @@
 package com.github.alcereo.kafkatool.producer;
 
+import com.github.alcereo.kafkatool.KtContext;
 import com.github.alcereo.kafkatool.topic.KtTopic;
 import com.github.alcereo.kafkatool.topic.TopicTypeConfig;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.noop.NoopTimer;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@Slf4j
 public class KtProducer<K,V>{
+
+    private String name;
     private KafkaProducer<K,V> producer;
     private KtTopic<K,V> topic;
 
+    private Timer sendingTimer;
 
-    private KtProducer(@NonNull KafkaProducer<K, V> producer, @NonNull KtTopic<K,V> topic) {
-        this.producer = producer;
-        this.topic = topic;
-    }
-
-    @lombok.Builder(builderClassName = "Builder")
-    private static <K,V> KtProducer<K,V> buildFrom(
+    private KtProducer(
+            String name,
+            @NonNull KafkaProducer<K, V> producer,
             @NonNull KtTopic<K,V> topic,
-            @NonNull String brokers,
-            @NonNull KtPartitioner<K,V> partitioner
-    ){
-        Properties producerConfig = new Properties();
-
-        producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
-
-//        Partitioner
-        producerConfig.put(
-                ProducerConfig.PARTITIONER_CLASS_CONFIG,
-                partitioner.getPartitionerClassName()
-        );
-        producerConfig.putAll(partitioner.getProducerAdditionalProperties());
-
-//        Type properties
-        TopicTypeConfig<K, V> topicTypeConfig = topic.getTopicTypeConfig();
-        producerConfig.put(
-                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-                topicTypeConfig.getKeySerializerClassName()
-        );
-        producerConfig.put(
-                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                topicTypeConfig.getValueSerializerClassName()
-        );
-        producerConfig.putAll(topicTypeConfig.getAdditionalProducerProperties());
-
-
-        KafkaProducer<K,V> kafkaProducer = new KafkaProducer<>(producerConfig);
-
-        return new KtProducer<>(kafkaProducer, topic);
+            Timer sendingTimer)
+    {
+        this.name           = name;
+        this.producer       = producer;
+        this.topic          = topic;
+        this.sendingTimer   = sendingTimer;
     }
 
     public KafkaProducer<K,V> getProducer(){
@@ -63,11 +48,15 @@ public class KtProducer<K,V>{
     }
 
     public Future<RecordMetadata> sendAsync(K key, V value){
-        return producer.send(
-                new ProducerRecord<>(
-                        topic.getTopicName(key, value),
-                        key,
-                        value
+        log.trace("Producer: {}, Async sending message: {} - {}", name, key, value);
+
+        return sendingTimer.record(
+                () -> producer.send(
+                        new ProducerRecord<>(
+                                topic.getTopicName(key, value),
+                                key,
+                                value
+                        )
                 )
         );
     }
@@ -92,15 +81,28 @@ public class KtProducer<K,V>{
     }
 
     private void syncSendRecord(ProducerRecord<K, V> record) throws ExecutionException, InterruptedException {
-        Future<RecordMetadata> send = producer.send(record);
-        producer.flush();
-        send.get();
+        log.trace("Producer: {}, Sync sending message: {}", name, record);
+
+        val timeMeasure = System.nanoTime();
+        try {
+            Future<RecordMetadata> send = producer.send(record);
+            producer.flush();
+            send.get();
+        }finally {
+            val finish = System.nanoTime() - timeMeasure;
+            sendingTimer.record(finish, TimeUnit.NANOSECONDS);
+        }
     }
 
 
     public void close(){
+        log.info("Producer: {}, closing the session", name);
         producer.close();
     }
+
+    //=======================================================================//
+    //                              CLASSES                                  //
+    //=======================================================================//
 
     public static class SimpleHeader implements org.apache.kafka.common.header.Header{
 
@@ -127,55 +129,85 @@ public class KtProducer<K,V>{
         }
     }
 
-//    public static class Builder<K,V>{
-//
-//        private final String schemaRegistryUrl;
-//
-//        private Properties producerConfig = new Properties();
-//        private String topic;
-//
-//        Builder(String brokers, String schemaRegistryUrl) {
-//            this.schemaRegistryUrl = schemaRegistryUrl;
-//            producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
-//        }
-//
-//        public Builder<K,V> enableKeyPartAppropriating(@NonNull Integer partNumber){
-//            producerConfig.put(ProducerConfig.PARTITIONER_CLASS_CONFIG,
-//                    KeyPartAppropriatePartitioner.class.getName()
-//            );
-//            producerConfig.put(PARTITIONER_NUMPARTS_PROPERTY_NAME, partNumber);
-//            return this;
-//        }
-//
-//        public Builder<K,V> enableAvroSerDe(){
-//            Objects.requireNonNull(schemaRegistryUrl,
-//                    "Reqired set schemaRegistryUrl from KafkaTool when use Avro.");
-//
-//            producerConfig.put("schema.registry.url", schemaRegistryUrl);
-//            producerConfig.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-//                    KafkaAvroSerializer.class.getName());
-//            producerConfig.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-//                    KafkaAvroSerializer.class.getName());
-//            return this;
-//        }
-//
-//        @SuppressWarnings("unchecked")
-//        public <PK,PV> Builder<PK,PV> keyValueClass(Class<PK> keyClass, Class<PV> valueClass){
-//            return (Builder<PK,PV>)this;
-//        }
-//
-//        public Builder<K,V> topic(String topic){
-//            this.topic = topic;
-//            return this;
-//        }
-//
-//        public KtProducer<K,V> build(){
-//            Objects.requireNonNull(topic, "Required set property: topic");
-//
-//            KafkaProducer<K, V> kvKafkaProducer = new KafkaProducer<>(producerConfig);
-//
-//            return new KtProducer<>(kvKafkaProducer, topic);
-//        }
-//
-//    }
+    //=======================================================================//
+    //                              BUILDERS                                 //
+    //=======================================================================//
+
+    private volatile static AtomicInteger nameMetricCounter = new AtomicInteger(0);
+
+    private static <K,V> KtProducer<K,V> buildFrom(
+            String name,
+            @NonNull KtTopic<K,V> topic,
+            @NonNull KtContext context,
+            @NonNull KtPartitioner<K,V> partitioner
+    ){
+        Properties producerConfig = new Properties();
+
+        producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, context.getBrokers());
+
+//        Partitioner
+        producerConfig.put(
+                ProducerConfig.PARTITIONER_CLASS_CONFIG,
+                partitioner.getPartitionerClassName()
+        );
+        producerConfig.putAll(partitioner.getProducerAdditionalProperties());
+
+//        Type properties
+        TopicTypeConfig<K, V> topicTypeConfig = topic.getTopicTypeConfig();
+        producerConfig.put(
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                topicTypeConfig.getKeySerializerClassName()
+        );
+        producerConfig.put(
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                topicTypeConfig.getValueSerializerClassName()
+        );
+        producerConfig.putAll(topicTypeConfig.getAdditionalProducerProperties());
+
+
+        KafkaProducer<K,V> kafkaProducer = new KafkaProducer<>(producerConfig);
+
+        Timer timer = context.getMeterRegistry().map(
+                meterRegistry -> Timer.builder("kafka-tools.producer." + (name == null ? nameMetricCounter.getAndIncrement() : name))
+                                    .publishPercentiles(0.5, 0.70, 0.80, 0.95, 0.98, 0.99)
+                                    .publishPercentileHistogram()
+                                    .register(meterRegistry)
+        ).orElse(
+                new NoopTimer(new Meter.Id("kafka-tools.producer." + nameMetricCounter.getAndIncrement(), new ArrayList<>(), null, null, Meter.Type.TIMER))
+        );
+
+        return new KtProducer<>(name, kafkaProducer, topic, timer);
+    }
+
+    public static <K,V> KtProducerBuilder<K,V> ktBuild(KtContext context, KtTopic<K,V> topic, KtPartitioner<K,V> partitioner){
+        return new KtProducerBuilder<>(context, topic, partitioner);
+    }
+
+    public static class KtProducerBuilder<K,V>{
+
+        private KtContext context;
+        private KtTopic<K,V> topic;
+        private KtPartitioner<K,V> partitioner;
+        String name;
+
+        private KtProducerBuilder(KtContext context, KtTopic<K, V> topic, KtPartitioner<K,V> partitioner) {
+            this.context = context;
+            this.topic = topic;
+            this.partitioner = partitioner;
+        }
+
+        public KtProducerBuilder<K,V> name(String name){
+            this.name = name;
+            return this;
+        }
+
+        public KtProducer<K,V> build(){
+            return KtProducer.buildFrom(
+                    name,
+                    topic,
+                    context,
+                    partitioner
+            );
+        }
+    }
 }
