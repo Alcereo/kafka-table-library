@@ -1,16 +1,18 @@
-package com.github.alcereo.kafkatool.sample.loadgen;
+package com.github.alcereo.kafkatool.sample.utils.loadgen;
 
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 import processing.DeviceEvent;
 
@@ -22,34 +24,53 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-@Component
-@EnableScheduling
-@SpringBootApplication
+@RestController
+@RequestMapping("loader")
+@Slf4j
 public class EventsGenerator {
 
-    private final int NUM_TREADS = 20;
+    private ExecutorService exec = Executors.newCachedThreadPool();
+    private volatile boolean running = true;
 
-
-    public static void main(String[] args) {
-        SpringApplication.run(EventsGenerator.class, args);
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class LoadData{
+        Integer numThread;
+        String url;
     }
 
-    @Bean
-    public RestTemplate template() {
-        return new RestTemplateBuilder ()
-                .build();
+    @PostMapping("start")
+    public String startLoad(@RequestBody LoadData loadData){
+
+        log.info("Start load with props: {}", loadData);
+        running=true;
+        count.set(0);
+
+        startLoadgen(loadData.numThread, loadData.url);
+
+        return "Success start";
     }
 
+    @PostMapping("stop")
+    public String stopLoad(){
+        running = false;
+        return "Success stopping";
+    }
 
-    public EventsGenerator() {
+    private AtomicInteger count = new AtomicInteger();
 
-        ExecutorService exec = Executors.newCachedThreadPool();
+    private Random random = new Random();
+
+    public void startLoadgen(Integer numThreads, String url) {
 
         exec.execute(() -> {
 
+            log.info("Start loadgen counting");
+
             List<Integer> pastRates = new ArrayList<>();
 
-            while (!Thread.currentThread().isInterrupted()){
+            while (!Thread.currentThread().isInterrupted() && running){
 
                 int countForSecond = count.getAndSet(0);
 
@@ -70,32 +91,33 @@ public class EventsGenerator {
                 }
             }
 
+            log.info("Finish loadgen counting...");
+
         });
 
-        for (int i = 0; i < NUM_TREADS; i++) {
+        log.info("Starting loadgen workers. Count: {}", numThreads);
+
+        for (int i = 0; i < numThreads; i++) {
+
             exec.execute(() -> {
                 RestTemplate build = new RestTemplateBuilder()
-                        .rootUri("http://localhost:8080/")
+                        .rootUri(url)
                         .build();
 
-                while (!Thread.currentThread().isInterrupted()) {
+                log.info("Start loadgen");
+
+                while (!Thread.currentThread().isInterrupted() && running) {
 
                     HttpHeaders headers = new HttpHeaders();
                     headers.setContentType(MediaType.APPLICATION_JSON);
 
                     generateAndSendEvent(build, headers);
                 }
+
+                log.info("Finish loadgen");
             });
         }
     }
-
-    @Autowired
-    RestTemplate template;
-
-    private AtomicInteger count = new AtomicInteger();
-
-    private Random random = new Random();
-
 
     public void generateAndSendEvent(RestTemplate template, HttpHeaders headers){
 
@@ -115,12 +137,6 @@ public class EventsGenerator {
                 entity,
                 String.class
         );
-
-        try {
-            Thread.sleep(10+random.nextInt(100));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
     }
 
