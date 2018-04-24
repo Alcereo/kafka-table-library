@@ -1,9 +1,10 @@
 package com.github.alcereo.kafkatool.sample.consumer;
 
-import com.github.alcereo.kafkatool.KafkaProducerWrapper;
 import com.github.alcereo.kafkatool.KafkaTool;
 import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
+import com.github.alcereo.kafkatool.producer.KtProducer;
 import com.github.alcereo.kafkatool.topic.KtTopic;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -14,38 +15,61 @@ import processing.DeviceEvent;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
-
-import static com.github.alcereo.kafkatool.sample.consumer.Application.*;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Configuration
 public class EventProcessing {
 
+    @Value("${kafka.topic.business-status.name:device-business-status-table}")
+    private String DEVICE_BUSINESS_STATUS_TABLE = "device-business-status-table";
+
+    @Value("${kafka.topic.business-status.numparts:20}")
+    private Integer businessTopicNumparts = 20;
+
+    @Value("${kafka.topic.event.name:event-topic}")
+    private String EVENT_TOPIC = "event-topic";
+
+    @Value("${kafka.topic.event.numparts:20}")
+    private Integer eventsTopicNumparts = 20;
+
+    @Value("${kafka.brokers}")
+    private String BROKERS = "192.170.0.3:9092";
+
+    @Value("${kafka.registry.url}")
+    private String SCHEMA_REGISTRY_URL = "http://192.170.0.6:8081";
+
     private static final byte[] sessionUUID = UUID.randomUUID().toString().getBytes();
 
     @Bean
-    public KafkaTool kafkaTool() {
-        return KafkaTool.fromBrokers(BROKERS)
-                .schemaRegistry(SCHEMA_REGISTRY_URL);
+    public KafkaTool kafkaTool(MeterRegistry registry) {
+        return KafkaTool.builder()
+                .brokers(BROKERS)
+                .schemaRegistryUrl(SCHEMA_REGISTRY_URL)
+                .meterRegistry(registry)
+                .build();
     }
 
     @Bean
-    public KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic(KafkaTool kafkaTool) {
+    public KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic(KafkaTool kafkaTool) throws ExecutionException, InterruptedException {
         return kafkaTool
                 .topicAvroSimpleTableBuilder(Integer.class, DeviceBusinessStatus.class)
                 .topicName(DEVICE_BUSINESS_STATUS_TABLE)
-                .numPartitions(NUM_PARTS)
+                .numPartitions(businessTopicNumparts)
+                .checkOnStartup()
                 .build();
     }
 
     @Bean
-    public KtTopic<Integer, DeviceEvent> eventTopic(KafkaTool kafkaTool) {
+    public KtTopic<Integer, DeviceEvent> eventTopic(KafkaTool kafkaTool) throws ExecutionException, InterruptedException {
         return kafkaTool
                 .topicAvroSimpleStreamBuilder(Integer.class, DeviceEvent.class)
                 .topicName(EVENT_TOPIC)
-                .numPartitions(NUM_PARTS)
+                .numPartitions(eventsTopicNumparts)
+                .checkOnStartup()
                 .build();
     }
+
 
     @Bean(destroyMethod = "close")
     public KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusLoop(
@@ -60,7 +84,6 @@ public class EventProcessing {
                         kafkaTool.consumerBuilder(businessStatusTopic)
                             .consumerGroup(deviceStateConsumerGroup)
                 ).recordHandler(record -> {
-                    log.trace("Don't save record by header");
 
                     if (record.headers().lastHeader("session") != null) {
                         if (!Arrays.equals(record.headers().lastHeader("session").value(), sessionUUID)) {
@@ -80,14 +103,12 @@ public class EventProcessing {
     }
 
     @Bean(destroyMethod = "close")
-    public KafkaProducerWrapper<Integer, DeviceBusinessStatus> businessStatusProducer(
-            KafkaTool kafkaTool
+    public KtProducer<Integer, DeviceBusinessStatus> businessStatusProducer(
+            KafkaTool kafkaTool,
+            KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic
     ) {
-        return kafkaTool.producerWrapperBuilder()
-                        .enableKeyPartAppropriating(NUM_PARTS)
-                        .enableAvroSerDe()
-                        .keyValueClass(Integer.class, DeviceBusinessStatus.class)
-                        .topic(DEVICE_BUSINESS_STATUS_TABLE)
+        return kafkaTool.producerKeyPartAppropriatingBuilder(businessStatusTopic)
+                        .name("business-status-producer")
                         .build();
     }
 
@@ -95,9 +116,9 @@ public class EventProcessing {
     public KtConsumerLoop<Integer, DeviceEvent> eventsLoop(
             KafkaTool kafkaTool,
             KtTopic<Integer, DeviceEvent> eventTopic,
-            EventInMemoryStore store,
+            EventInMemoryStore eventWindowStore,
             DeviceBusinessStateInMemoryStore deviceStatusesStore,
-            KafkaProducerWrapper<Integer, DeviceBusinessStatus> businessStatusProducer
+            KtProducer<Integer, DeviceBusinessStatus> businessStatusProducer
     ) {
 
         KtConsumerLoop<Integer, DeviceEvent> eventsConsumerLoop = kafkaTool
@@ -118,12 +139,13 @@ public class EventProcessing {
                                 deviceEvent.getDeviceId(),
                                 errorStatus,
                                 Collections.singletonList(
-                                        KafkaProducerWrapper.Header
+                                        KtProducer.SimpleHeader
                                                 .from("session", sessionUUID)
                                 )
                         );
 
                         deviceStatusesStore.upsert(deviceEvent.getDeviceId(), errorStatus);
+
                     } else if (deviceEvent.getEventId().equals("2")) {
 
                         DeviceBusinessStatus fineStatus = DeviceBusinessStatus.newBuilder()
@@ -134,15 +156,16 @@ public class EventProcessing {
                                 deviceEvent.getDeviceId(),
                                 fineStatus,
                                 Collections.singletonList(
-                                        KafkaProducerWrapper.Header
+                                        KtProducer.SimpleHeader
                                                 .from("session", sessionUUID)
                                 )
                         );
 
                         deviceStatusesStore.upsert(deviceEvent.getDeviceId(), fineStatus);
+
                     }
 
-                    store.addEvent(deviceEvent);
+                    eventWindowStore.addEvent(deviceEvent);
                 }).build();
 
         eventsConsumerLoop.start();
