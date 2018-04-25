@@ -7,11 +7,12 @@ import org.springframework.stereotype.Component;
 import processing.DeviceBusinessStatus;
 
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class DeviceBusinessStateInMemoryStore implements KtStorage<Integer,DeviceBusinessStatus> {
 
-    private HashMap<Integer, StatusRecord> statuses = new HashMap<>();
+    private ConcurrentHashMap<Integer, StatusRecord> statuses = new ConcurrentHashMap<>(25000, 0.75f,20000);
 
 
     public void upsert(Integer deviceId, DeviceBusinessStatus status){
@@ -22,7 +23,7 @@ public class DeviceBusinessStateInMemoryStore implements KtStorage<Integer,Devic
         upsert(deviceId, status, false);
     }
 
-    private synchronized void upsert(Integer deviceId, DeviceBusinessStatus status, boolean internal){
+    private void upsert(Integer deviceId, DeviceBusinessStatus status, boolean internal){
         statuses.put(
                 deviceId,
                 StatusRecord.builder()
