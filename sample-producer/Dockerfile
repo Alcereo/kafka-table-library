@@ -6,9 +6,9 @@ ENV KAFKA_REGISTRY_URL="http://192.170.0.6:8081"
 
 ENV MANAGEMENT_METRICS_EXPORT_INFLUX_URI=http://192.170.0.1:8086
 
-ENV KAFKA_TOPIC_EVENT_NAME="event-topic"
-ENV KAFKA_TOPIC_EVENT_NUMPARTS="20"
+#ENV KAFKA_TOPIC_EVENT_NAME="event-topic"
+#ENV KAFKA_TOPIC_EVENT_NUMPARTS="20"
 
-ADD ./sample-producer-0.0.1-SNAPSHOT.jar /sample-producer-0.0.1-SNAPSHOT.jar
+ADD ./build/libs/sample-producer-0.0.1-SNAPSHOT.jar /app.jar
 
-CMD ["java", "-jar", "/sample-producer-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "/app.jar"]
