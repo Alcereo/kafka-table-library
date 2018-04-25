@@ -4,6 +4,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,7 +19,8 @@ import java.util.concurrent.ExecutionException;
 @RequestMapping("topics")
 public class AdminController {
 
-    private static final String BROKERS = "192.170.0.3:9092";
+    @Value("${kafka.brokers}")
+    private String BROKERS = "192.170.0.3:9092";
 
     @Bean(destroyMethod = "close")
     public AdminClient adminClient(){

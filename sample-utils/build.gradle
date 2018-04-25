@@ -37,6 +37,8 @@ ext {
 
 dependencies {
 	compile('org.springframework.boot:spring-boot-starter-actuator')
+	compile('io.micrometer:micrometer-registry-influx:1.0.3')
+
 	compile('org.springframework.boot:spring-boot-starter-web'){
 		exclude module: 'spring-boot-starter-tomcat'
 	}
