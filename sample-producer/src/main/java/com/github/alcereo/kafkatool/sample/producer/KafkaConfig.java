@@ -54,6 +54,8 @@ public class KafkaConfig {
     ){
         return kafkaTool.producerKeyPartAppropriatingBuilder(eventTopic)
                 .name("event-producer")
+//                .batchSizeBytes(16000)
+//                .bufferMemoryBytes(500000L)
                 .build();
     }
 
