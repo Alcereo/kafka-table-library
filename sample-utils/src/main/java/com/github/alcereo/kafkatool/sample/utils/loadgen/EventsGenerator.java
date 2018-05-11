@@ -38,6 +38,7 @@ public class EventsGenerator {
     public static class LoadData{
         Integer numThread;
         String url;
+        Integer idBound;
     }
 
     @PostMapping("start")
@@ -45,9 +46,8 @@ public class EventsGenerator {
 
         log.info("Start load with props: {}", loadData);
         running=true;
-//        count.set(0);
 
-        startLoadgen(loadData.numThread, loadData.url);
+        startLoadgen(loadData.numThread, loadData.url, loadData.idBound);
 
         return "Success start";
     }
@@ -71,7 +71,7 @@ public class EventsGenerator {
 
     private Random random = new Random();
 
-    public void startLoadgen(Integer numThreads, String url) {
+    public void startLoadgen(Integer numThreads, String url, Integer idBound) {
 
         log.info("Starting loadgen workers. Count: {}", numThreads);
 
@@ -87,7 +87,7 @@ public class EventsGenerator {
                 headers.setContentType(MediaType.APPLICATION_JSON);
 
                 while (!Thread.currentThread().isInterrupted() && running) {
-                    generateAndSendEvent(build, headers, url);
+                    generateAndSendEvent(build, headers, url, idBound);
                 }
 
                 log.info("Finish loadgen");
@@ -95,10 +95,10 @@ public class EventsGenerator {
         }
     }
 
-    public void generateAndSendEvent(RestTemplate template, HttpHeaders headers, String url){
+    public void generateAndSendEvent(RestTemplate template, HttpHeaders headers, String url, Integer idBound){
         requestTimer.record(() -> {
             DeviceEvent event = DeviceEvent.newBuilder()
-                    .setDeviceId(random.nextInt(25000))
+                    .setDeviceId(random.nextInt(idBound))
                     .setComponentId(String.valueOf(random.nextInt(3)))
                     .setEventId(String.valueOf(random.nextInt(6)))
                     .setTimestamp(String.valueOf(System.currentTimeMillis()))
