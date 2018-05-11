@@ -20,7 +20,7 @@ apply plugin: 'java'
 //apply plugin: 'com.commercehub.gradle.plugin.avro'
 
 group = 'com.github.alcereo'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.2-SNAPSHOT'
 sourceCompatibility = 1.8
 
 repositories {
@@ -58,6 +58,8 @@ dependencies {
 		exclude module: 'log4j'
 	}
 //	AVRO --
+
+	compile('io.micrometer:micrometer-core:1.0.3')
 
 	compileOnly('org.projectlombok:lombok:1.16.20')
 //	testCompile('org.springframework.boot:spring-boot-starter-test')

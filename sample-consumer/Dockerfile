@@ -1,0 +1,14 @@
+FROM java
+
+ENV SERVER_PORT=8085
+
+ENV DEVICE_STATE_CONSUMER_GROUP="device-state-consumer-1"
+
+ENV KAFKA_BROKERS="192.170.0.3:9092"
+ENV KAFKA_REGISTRY_URL="http://192.170.0.6:8081"
+
+ENV MANAGEMENT_METRICS_EXPORT_INFLUX_URI=http://192.170.0.1:8086
+
+ADD ./app.jar /app.jar
+
+CMD ["java", "-jar", "/app.jar"]

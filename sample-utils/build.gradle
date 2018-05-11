@@ -37,12 +37,14 @@ ext {
 
 dependencies {
 	compile('org.springframework.boot:spring-boot-starter-actuator')
+	compile('io.micrometer:micrometer-registry-influx:1.0.3')
+
 	compile('org.springframework.boot:spring-boot-starter-web'){
 		exclude module: 'spring-boot-starter-tomcat'
 	}
 	compile('org.springframework.boot:spring-boot-starter-webflux')
 	compile('org.springframework.boot:spring-boot-starter-jetty')
-	compile('org.springframework.cloud:spring-cloud-starter-config')
+//	compile('org.springframework.cloud:spring-cloud-starter-config')
 
 	compile('org.apache.kafka:kafka-streams:1.0.0')
 	compile('org.apache.kafka:kafka-clients:1.0.0')

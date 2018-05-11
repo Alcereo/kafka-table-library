@@ -1,18 +1,27 @@
-package com.github.alcereo.kafkatool;
+package com.github.alcereo.kafkatool.topic;
 
+import com.github.alcereo.kafkatool.consumer.KtConsumer;
+import lombok.Builder;
+import lombok.NonNull;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.Collection;
-import java.util.Collections;
 
-public class TableSubscriber implements Subscriber {
+@Builder
+public class TableSubscriber<K,V> implements Subscriber<K,V> {
+
+    @NonNull
+    private Collection<String> topicsCollection;
+
 
     @Override
-    public <K, V> void subscribe(KafkaConsumer<K, V> consumer, String topic) {
-        consumer.subscribe(
-                Collections.singletonList(topic),
+    public void subscribe(KtConsumer<K, V> consumer) {
+        final KafkaConsumer<K, V> kafkaConsumer = consumer.getKafkaConsumer();
+
+        kafkaConsumer.subscribe(
+                topicsCollection,
                 new ConsumerRebalanceListener() {
                     @Override
                     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
@@ -20,9 +29,10 @@ public class TableSubscriber implements Subscriber {
 
                     @Override
                     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                        consumer.seekToBeginning(partitions);
+                        kafkaConsumer.seekToBeginning(partitions);
                     }
                 }
         );
     }
+
 }

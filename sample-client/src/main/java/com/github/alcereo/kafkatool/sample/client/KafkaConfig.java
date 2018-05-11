@@ -1,51 +1,66 @@
 package com.github.alcereo.kafkatool.sample.client;
 
-import com.github.alcereo.kafkatool.KafkaConsumerLoop;
-import com.github.alcereo.kafkatool.KafkaConsumerWrapper;
 import com.github.alcereo.kafkatool.KafkaTool;
-import com.github.alcereo.kafkatool.KafkaTopicWrapper;
+import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
+import com.github.alcereo.kafkatool.topic.KtTopic;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import processing.DeviceBusinessStatus;
 
-import static com.github.alcereo.kafkatool.sample.client.Application.*;
+import java.util.concurrent.ExecutionException;
 
 @Configuration
 public class KafkaConfig {
 
+    @Value("${kafka.topic.business-status.name:device-business-status-table}")
+    private String DEVICE_BUSINESS_STATUS_TABLE;
+
+    @Value("${kafka.topic.business-status.numparts:20}")
+    private Integer businessTopicNumparts;
+
+    @Value("${kafka.brokers}")
+    private String BROKERS;
+
+    @Value("${kafka.registry.url}")
+    private String SCHEMA_REGISTRY_URL;
+
     @Bean
-    public KafkaTool kafkaTool(){
-        return KafkaTool.fromBrokers(BROKERS)
-                .schemaRegistry(SCHEMA_REGISTRY_URL);
+    public KafkaTool kafkaTool(MeterRegistry registry){
+        return KafkaTool
+                .builder()
+                .brokers(BROKERS)
+                .schemaRegistryUrl(SCHEMA_REGISTRY_URL)
+                .meterRegistry(registry)
+                .build();
     }
 
     @Bean
-    public KafkaTopicWrapper<Integer, DeviceBusinessStatus> businessTopic(
+    public KtTopic<Integer, DeviceBusinessStatus> businessTopic(
             KafkaTool kafkaTool
-    ){
-        return kafkaTool.topicBuilder()
-                .name(DEVICE_BUSINESS_STATUS_TABLE)
-                .enableTableSubscription()
-                .enableAvroSerDe()
-                .keyValueClass(Integer.class, DeviceBusinessStatus.class)
+    ) throws ExecutionException, InterruptedException {
+        return kafkaTool
+                .topicAvroSimpleTableBuilder(Integer.class, DeviceBusinessStatus.class)
+                .topicName(DEVICE_BUSINESS_STATUS_TABLE)
+                .numPartitions(businessTopicNumparts)
                 .build();
     }
 
 
     @Bean(destroyMethod = "close")
-    public KafkaConsumerLoop<Integer, DeviceBusinessStatus> businessStatusLoop(
+    public KtConsumerLoop<Integer, DeviceBusinessStatus> businessStatusLoop(
             KafkaTool kafkaTool,
             DeviceBusinessStateInMemoryStore store,
-            KafkaTopicWrapper<Integer, DeviceBusinessStatus> businessTopic
+            KtTopic<Integer, DeviceBusinessStatus> businessTopic
     ){
 
-        KafkaConsumerWrapper.Builder<Integer, DeviceBusinessStatus> consumerBuilder = kafkaTool.consumerWrapperBuilder()
-                .consumerGroup("device-status-client-1")
-                .topic(businessTopic);
-
-        KafkaConsumerLoop<Integer, DeviceBusinessStatus> consumerLoop = kafkaTool.consumerLoopBuilder(consumerBuilder)
-                .threadsNumber(5)
-                .connectStorage(store)
+        KtConsumerLoop<Integer, DeviceBusinessStatus> consumerLoop = kafkaTool
+                .FixedThreadSyncSequetalLoopBuilder(
+                        kafkaTool.consumerBuilder(businessTopic)
+                                .consumerGroup("device-status-client-1")
+                ).threadsNumber(5)
+                .recordHandler(store.defaultHandler())
                 .build();
 
         consumerLoop.start();

@@ -1,13 +1,13 @@
 package com.github.alcereo.kafkatool.sample.client;
 
-import com.github.alcereo.kafkatool.KTStorage;
+import com.github.alcereo.kafkatool.consumer.KtStorage;
 import org.springframework.stereotype.Component;
 import processing.DeviceBusinessStatus;
 
 import java.util.HashMap;
 
 @Component
-public class DeviceBusinessStateInMemoryStore implements KTStorage<Integer,DeviceBusinessStatus> {
+public class DeviceBusinessStateInMemoryStore implements KtStorage<Integer,DeviceBusinessStatus> {
 
     private HashMap<Integer, DeviceBusinessStatus> statuses = new HashMap<>();
 
