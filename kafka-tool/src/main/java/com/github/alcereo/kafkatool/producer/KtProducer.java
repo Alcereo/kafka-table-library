@@ -14,10 +14,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -87,7 +84,7 @@ public class KtProducer<K,V>{
         val timeMeasure = System.nanoTime();
         try {
             Future<RecordMetadata> send = producer.send(record);
-            producer.flush();
+//            producer.flush();
             send.get();
         }finally {
             val finish = System.nanoTime() - timeMeasure;
@@ -138,10 +135,11 @@ public class KtProducer<K,V>{
 
     private static <K,V> KtProducer<K,V> buildFrom(
             String name,
-            @NonNull KtTopic<K,V> topic,
+            @NonNull KtTopic<K, V> topic,
             @NonNull KtContext context,
-            @NonNull KtPartitioner<K,V> partitioner
-    ){
+            @NonNull KtPartitioner<K, V> partitioner,
+            Integer batchSizeBytes,
+            Long bufferMemoryBytes){
         Properties producerConfig = new Properties();
 
         String finalName = (name == null ? UUID.randomUUID().toString() : name);
@@ -169,6 +167,33 @@ public class KtProducer<K,V>{
         );
         producerConfig.putAll(topicTypeConfig.getAdditionalProducerProperties());
 
+        //  --- Batch properties ---
+
+        //The producer will attempt to batch records together into fewer requests whenever multiple records are being sent
+        // to the same partition. This helps performance on both the client and the server. This configuration controls the
+        // default batch size in bytes.
+        //No attempt will be made to batch records larger than this size.
+        //
+        //Requests sent to brokers will contain multiple batches, one for each partition with data available to be sent.
+        //
+        //A small batch size will make batching less common and may reduce throughput (a batch size of zero will disable
+        // batching entirely).
+        // A very large batch size may use memory a bit more wastefully as we will always allocate a buffer of the specified
+        // batch size in anticipation of additional records.
+        producerConfig.put(ProducerConfig.BATCH_SIZE_CONFIG, Optional.ofNullable(batchSizeBytes).orElse(16384));
+
+
+        // The total bytes of memory the producer can use to buffer records waiting to be sent to the server.
+        // If records are sent faster than they can be delivered to the server the producer will block
+        // for max.block.ms after which it will throw an exception.
+        //This setting should correspond roughly to the total memory the producer will use, but is not a
+        // hard bound since not all memory the producer uses is used for buffering. Some additional memory will be
+        // used for compression (if compression is enabled) as well as for maintaining in-flight requests.
+        producerConfig.put(ProducerConfig.BUFFER_MEMORY_CONFIG, Optional.ofNullable(bufferMemoryBytes).orElse(33554432L));
+
+
+        producerConfig.put(ProducerConfig.LINGER_MS_CONFIG, 0);
+
 
         KafkaProducer<K,V> kafkaProducer = new KafkaProducer<>(producerConfig);
 
@@ -194,6 +219,8 @@ public class KtProducer<K,V>{
         private KtTopic<K,V> topic;
         private KtPartitioner<K,V> partitioner;
         String name;
+        Integer batchSizeBytes;
+        private Long bufferMemoryBytes;
 
         private KtProducerBuilder(KtContext context, KtTopic<K, V> topic, KtPartitioner<K,V> partitioner) {
             this.context = context;
@@ -201,8 +228,48 @@ public class KtProducer<K,V>{
             this.partitioner = partitioner;
         }
 
+        /**
+         * An id string to pass to the server when making requests.
+         * The purpose of this is to be able to track the source of requests beyond just ip/port by allowing a
+         * logical application name to be included in server-side request logging.
+         *
+         */
         public KtProducerBuilder<K,V> name(String name){
             this.name = name;
+            return this;
+        }
+
+        /**
+         * The producer will attempt to batch records together into fewer requests whenever multiple records are being
+         * sent to the same partition. This helps performance on both the client and the server.
+         * This configuration controls the default batch size in bytes.
+         * No attempt will be made to batch records larger than this size.
+         *
+         * Requests sent to brokers will contain multiple batches, one for each partition with data available to be sent.
+         *
+         * A small batch size will make batching less common and may reduce throughput (a batch size of zero will
+         * disable batching entirely). A very large batch size may use memory a bit more wastefully as we will always
+         * allocate a buffer of the specified batch size in anticipation of additional records.
+         *
+         * @param batchSizeBytes batch size in bytes
+         */
+        public KtProducerBuilder<K,V> batchSizeBytes(Integer batchSizeBytes){
+            this.batchSizeBytes = batchSizeBytes;
+            return this;
+        }
+
+
+        /**
+         * The total bytes of memory the producer can use to buffer records waiting to be sent to the server.
+         * If records are sent faster than they can be delivered to the server the producer will block
+         * for max.block.ms after which it will throw an exception.
+         * This setting should correspond roughly to the total memory the producer will use, but is not a
+         * hard bound since not all memory the producer uses is used for buffering. Some additional memory
+         * will be used for compression (if compression is enabled) as well as for maintaining in-flight requests.
+         * @param bufferMemoryBytes buffer memory in bytes
+         */
+        public KtProducerBuilder<K,V> bufferMemoryBytes(Long bufferMemoryBytes) {
+            this.bufferMemoryBytes = bufferMemoryBytes;
             return this;
         }
 
@@ -211,8 +278,9 @@ public class KtProducer<K,V>{
                     name,
                     topic,
                     context,
-                    partitioner
-            );
+                    partitioner,
+                    batchSizeBytes,
+                    bufferMemoryBytes);
         }
     }
 }

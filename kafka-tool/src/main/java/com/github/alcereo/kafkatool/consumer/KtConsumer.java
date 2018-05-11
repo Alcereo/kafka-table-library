@@ -33,7 +33,7 @@ public class KtConsumer<K,V> implements AutoCloseable{
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         config.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
 
-        config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Optional.ofNullable(maxPollRecords).orElse(500));
+        config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Optional.ofNullable(maxPollRecords).orElse(50000));
 
         TopicTypeConfig<K, V> topicTypeConfig = topic.getTopicTypeConfig();
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, topicTypeConfig.getKeyDeserializerClassName());
