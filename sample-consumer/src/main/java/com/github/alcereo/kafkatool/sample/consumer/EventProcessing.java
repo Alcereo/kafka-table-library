@@ -2,42 +2,41 @@ package com.github.alcereo.kafkatool.sample.consumer;
 
 import com.github.alcereo.kafkatool.KafkaTool;
 import com.github.alcereo.kafkatool.consumer.KtConsumerLoop;
-import com.github.alcereo.kafkatool.producer.KtProducer;
 import com.github.alcereo.kafkatool.topic.KtTopic;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import processing.DeviceBusinessStatus;
 import processing.DeviceEvent;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Configuration
+@ComponentScan("com.github.alcereo.kafkatool.consumer")
 public class EventProcessing {
 
     @Value("${kafka.topic.business-status.name:device-business-status-table}")
     private String DEVICE_BUSINESS_STATUS_TABLE = "device-business-status-table";
 
     @Value("${kafka.topic.business-status.numparts:20}")
-    private Integer businessTopicNumparts = 20;
+    private Integer businessTopicNumparts;
 
     @Value("${kafka.topic.event.name:event-topic}")
     private String EVENT_TOPIC = "event-topic";
 
     @Value("${kafka.topic.event.numparts:20}")
-    private Integer eventsTopicNumparts = 20;
+    private Integer eventsTopicNumparts;
 
     @Value("${kafka.brokers}")
-    private String BROKERS = "192.170.0.3:9092";
+    private String BROKERS;
 
     @Value("${kafka.registry.url}")
-    private String SCHEMA_REGISTRY_URL = "http://192.170.0.6:8081";
+    private String SCHEMA_REGISTRY_URL;
 
     private static final byte[] sessionUUID = UUID.randomUUID().toString().getBytes();
 
@@ -71,102 +70,107 @@ public class EventProcessing {
     }
 
 
-    @Bean(destroyMethod = "close")
-    public KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusLoop(
-            @Value("${device-state-consumer-group}") String deviceStateConsumerGroup,
-            KafkaTool kafkaTool,
-            KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic,
-            DeviceBusinessStateInMemoryStore deviceStatusesStore
-    ) {
+//    @Bean(destroyMethod = "close")
+//    public KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusLoop(
+//            @Value("${device-state-consumer-group}") String deviceStateConsumerGroup,
+//            KafkaTool kafkaTool,
+//            KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic,
+//            DeviceBusinessStateInMemoryStore deviceStatusesStore
+//    ) {
+//
+//        KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusConsumerLoop = kafkaTool
+//                .FixedThreadSyncSequetalLoopBuilder(
+//                        kafkaTool.consumerBuilder(businessStatusTopic)
+//                            .consumerGroup(deviceStateConsumerGroup)
+//                ).recordHandler(record -> {
+//
+//                    if (record.headers().lastHeader("session") != null) {
+//                        if (!Arrays.equals(record.headers().lastHeader("session").value(), sessionUUID)) {
+//                            deviceStatusesStore.externalUpsert(record.key(), record.value());
+//                        } else {
+//                            log.trace("Don't save record by header");
+//                        }
+//                    } else {
+//                        deviceStatusesStore.externalUpsert(record.key(), record.value());
+//                    }
+//                }).threadsNumber(1)
+//                .build();
+//
+//        deviceBusinessStatusConsumerLoop.start();
+//
+//        return deviceBusinessStatusConsumerLoop;
+//    }
 
-        KtConsumerLoop<Integer, DeviceBusinessStatus> deviceBusinessStatusConsumerLoop = kafkaTool
-                .FixedThreadSyncSequetalLoopBuilder(
-                        kafkaTool.consumerBuilder(businessStatusTopic)
-                            .consumerGroup(deviceStateConsumerGroup)
-                ).recordHandler(record -> {
-
-                    if (record.headers().lastHeader("session") != null) {
-                        if (!Arrays.equals(record.headers().lastHeader("session").value(), sessionUUID)) {
-                            deviceStatusesStore.externalUpsert(record.key(), record.value());
-                        } else {
-                            log.trace("Don't save record by header");
-                        }
-                    } else {
-                        deviceStatusesStore.externalUpsert(record.key(), record.value());
-                    }
-                })
-                .build();
-
-        deviceBusinessStatusConsumerLoop.start();
-
-        return deviceBusinessStatusConsumerLoop;
-    }
-
-    @Bean(destroyMethod = "close")
-    public KtProducer<Integer, DeviceBusinessStatus> businessStatusProducer(
-            KafkaTool kafkaTool,
-            KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic
-    ) {
-        return kafkaTool.producerKeyPartAppropriatingBuilder(businessStatusTopic)
-                        .name("business-status-producer")
-                        .build();
-    }
+//    @Bean(destroyMethod = "close")
+//    public KtProducer<Integer, DeviceBusinessStatus> businessStatusProducer(
+//            KafkaTool kafkaTool,
+//            KtTopic<Integer, DeviceBusinessStatus> businessStatusTopic
+//    ) {
+//        return kafkaTool.producerKeyPartAppropriatingBuilder(businessStatusTopic)
+//                        .name("business-status-producer")
+//                        .build();
+//    }
 
     @Bean(destroyMethod = "close")
     public KtConsumerLoop<Integer, DeviceEvent> eventsLoop(
             KafkaTool kafkaTool,
             KtTopic<Integer, DeviceEvent> eventTopic,
             EventInMemoryStore eventWindowStore,
-            DeviceBusinessStateInMemoryStore deviceStatusesStore,
-            KtProducer<Integer, DeviceBusinessStatus> businessStatusProducer
+            HistoryRepository historyRepository,
+            DeviceBusinessStateInMemoryStore deviceStatusesStore
+//            KtProducer<Integer, DeviceBusinessStatus> businessStatusProducer
     ) {
 
         KtConsumerLoop<Integer, DeviceEvent> eventsConsumerLoop = kafkaTool
                 .FixedThreadSyncSequetalLoopBuilder(
                         kafkaTool
                                 .consumerBuilder(eventTopic)
+                                .maxPollRecords(10000)
                                 .consumerGroup("event-consumer-1")
-                ).recordHandler(record -> {
+                )
+                .recordHandler(record -> {
                     DeviceEvent deviceEvent = record.value();
 
-                    if (deviceEvent.getEventId().equals("1")) {
+//                    if (deviceEvent.getEventId().equals("1")) {
+//
+//                        DeviceBusinessStatus errorStatus = DeviceBusinessStatus.newBuilder()
+//                                .setStatus("ERROR")
+//                                .build();
+//
+//                        businessStatusProducer.sendSync(
+//                                deviceEvent.getDeviceId(),
+//                                errorStatus,
+//                                Collections.singletonList(
+//                                        KtProducer.SimpleHeader
+//                                                .from("session", sessionUUID)
+//                                )
+//                        );
+//
+//                        deviceStatusesStore.upsert(deviceEvent.getDeviceId(), errorStatus);
 
-                        DeviceBusinessStatus errorStatus = DeviceBusinessStatus.newBuilder()
-                                .setStatus("ERROR")
-                                .build();
+//                    } else if (deviceEvent.getEventId().equals("2")) {
 
-                        businessStatusProducer.sendSync(
-                                deviceEvent.getDeviceId(),
-                                errorStatus,
-                                Collections.singletonList(
-                                        KtProducer.SimpleHeader
-                                                .from("session", sessionUUID)
-                                )
-                        );
+//                        DeviceBusinessStatus fineStatus = DeviceBusinessStatus.newBuilder()
+//                                .setStatus("FINE")
+//                                .build();
 
-                        deviceStatusesStore.upsert(deviceEvent.getDeviceId(), errorStatus);
+//                        businessStatusProducer.sendSync(
+//                                deviceEvent.getDeviceId(),
+//                                fineStatus,
+//                                Collections.singletonList(
+//                                        KtProducer.SimpleHeader
+//                                                .from("session", sessionUUID)
+//                                )
+//                        );
+//
+//                        deviceStatusesStore.upsert(deviceEvent.getDeviceId(), fineStatus);
 
-                    } else if (deviceEvent.getEventId().equals("2")) {
+//                    }
 
-                        DeviceBusinessStatus fineStatus = DeviceBusinessStatus.newBuilder()
-                                .setStatus("FINE")
-                                .build();
-
-                        businessStatusProducer.sendSync(
-                                deviceEvent.getDeviceId(),
-                                fineStatus,
-                                Collections.singletonList(
-                                        KtProducer.SimpleHeader
-                                                .from("session", sessionUUID)
-                                )
-                        );
-
-                        deviceStatusesStore.upsert(deviceEvent.getDeviceId(), fineStatus);
-
-                    }
-
-                    eventWindowStore.addEvent(deviceEvent);
-                }).build();
+                    historyRepository.addDeviceEvent(deviceEvent.getDeviceId(), deviceEvent);
+//                    eventWindowStore.addEvent(deviceEvent);
+                }).threadsNumber(10)
+                .build();
 
         eventsConsumerLoop.start();
 

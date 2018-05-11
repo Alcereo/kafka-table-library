@@ -66,6 +66,8 @@ dependencies {
 
 	compileOnly('org.projectlombok:lombok')
 	testCompile('org.springframework.boot:spring-boot-starter-test')
+
+	compile('com.google.guava:guava:25.0-jre')
 }
 
 dependencyManagement {
