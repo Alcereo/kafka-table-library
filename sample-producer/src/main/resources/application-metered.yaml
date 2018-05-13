@@ -1,0 +1,13 @@
+management:
+  metrics:
+    export:
+      influx:
+        uri: http://192.170.0.1:8086
+        db: web-service
+        step: 2s
+
+  endpoints:
+    web:
+      exposure:
+        include: metrics
+

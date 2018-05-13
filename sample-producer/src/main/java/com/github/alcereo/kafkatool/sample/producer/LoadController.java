@@ -1,6 +1,5 @@
 package com.github.alcereo.kafkatool.sample.producer;
 
-import com.github.alcereo.kafkatool.producer.KtProducer;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import processing.DeviceEvent;
 
 import java.util.Random;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -98,14 +96,13 @@ public class LoadController {
 
 
     @Autowired
-    private KtProducer<Integer, DeviceEvent> producer;
+    private EventService service;
 
     private void sendEvent(DeviceEvent event) {
         try {
-            producer.sendSync(event.getDeviceId(), event);
-        } catch (InterruptedException | ExecutionException e) {
+            service.sendDeviceEvent(event);
+        } catch (Exception e) {
             log.error("Error while sending message", e);
-            throw new RuntimeException(e);
         }
     }
 

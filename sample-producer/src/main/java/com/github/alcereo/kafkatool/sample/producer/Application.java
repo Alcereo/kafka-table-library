@@ -8,6 +8,7 @@ import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCusto
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.reactive.config.EnableWebFlux;
 
@@ -25,6 +26,7 @@ public class Application{
     }
 
     @Bean
+    @Profile("metered")
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(
             @Value("${spring.application.name}") String appName,
             @Value("${spring.application.id}") String appId
